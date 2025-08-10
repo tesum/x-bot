@@ -4,7 +4,9 @@ import uuid
 import json
 import logging
 import random
+import string
 import re
+from urllib.parse import quote
 from config import config
 
 logger = logging.getLogger(__name__)
@@ -23,9 +25,8 @@ class XUIAPI:
                 "password": config.XUI_PASSWORD
             }
             
-            # Формируем URL с учетом базового пути
-            base_url = config.XUI_API_URL.rstrip('/')
-            login_url = f"{base_url}/login"
+            # Формируем URL
+            login_url = f"{config.XUI_API_URL}/login"
             
             async with self.session.post(login_url, data=auth_data) as resp:
                 # Обрабатываем различные форматы ответов
@@ -43,7 +44,7 @@ class XUIAPI:
                 # Обработка JSON ответов
                 try:
                     response = await resp.json()
-                    return response.get("success", False)
+                    return resp.headers
                 except:
                     return False
         except Exception as e:
@@ -52,8 +53,12 @@ class XUIAPI:
 
     async def create_vless_profile(self, telegram_id: int):
         """Создание VLESS профиля через 3x-UI API"""
-        if not await self.login():
-            logger.error("Failed to authenticate before creating profile")
+        authData = None
+        try:
+            authData = await self.login()
+            logger.debug(f"Cookie: {authData.get('set-cookie', '')}")
+        except Exception as e:
+            logger.error(f"Login error: {e}")
             return None
         
         try:
@@ -65,7 +70,7 @@ class XUIAPI:
             # Параметры клиента
             client_settings = {
                 "id": client_id,
-                "flow": "xtls-rprx-direct",
+                "flow": "xtls-rprx-vision",
                 "email": email,
                 "limitIp": 0,
                 "totalGB": 0,
@@ -86,11 +91,18 @@ class XUIAPI:
             # Настройки потока
             stream_settings = {
                 "network": "tcp",
-                "security": "tls",
-                "tlsSettings": {
-                    "serverName": config.XUI_SERVER_NAME,
-                    "alpn": ["http/1.1"],
-                    "certificates": []
+                "security": "reality",
+                "realitySettings": {
+                    "dest": "teamdocs.su:443",
+                    "serverNames": ["teamdocs.su"],
+                    "show": False,
+                    "xver": 0,
+                    "serverName": "teamdocs.su",
+                    "privateKey": generate_random_key(),
+                    "settings": {
+                        "publicKey": generate_random_key(),
+                        "fingerprint": "chrome"
+                    },
                 },
                 "tcpSettings": {
                     "header": {
@@ -127,11 +139,11 @@ class XUIAPI:
             }
             
             # Формируем URL для создания инбаунда
-            base_url = config.XUI_API_URL.rstrip('/')
-            create_url = f"{base_url}/panel/api/inbounds/add"
+            create_url = f"{config.XUI_API_URL}/panel/api/inbounds/add"
+            cookie_set = authData.get('set-cookie', '')
             
             # Отправляем запрос на создание
-            async with self.session.post(create_url, json=data) as resp:
+            async with self.session.post(create_url, data=data, headers={"Cookie": cookie_set}) as resp:
                 content_type = resp.headers.get('Content-Type', '').lower()
                 response_text = await resp.text()
                 logger.debug(f"Create profile response: {response_text[:500]}...")
@@ -228,10 +240,24 @@ async def get_user_stats(email: str):
     finally:
         await api.close()
 
+def generate_random_key(length=44) -> str:
+    """
+    Генерация случайного ключа, похожего на пример,
+    с символами A-Z, a-z, 0-9, '-' и '_'
+    """
+    allowed_chars = string.ascii_letters + string.digits + "-_"
+    return ''.join(random.choice(allowed_chars) for _ in range(length))
+
 def generate_vless_url(profile_data: dict) -> str:
-    """Генерация VLESS ссылки"""
+    """Генерация VLESS ссылки с дополнительными параметрами"""
+    # Чтобы безопасно вставить alpn и другие параметры с символами
+    alpn = quote("http/1.1")  # кодируем для URL
+    
+    user_tag = profile_data['email'].split('_')[1] if 'email' in profile_data and '_' in profile_data['email'] else "user"
+    
     return (
         f"vless://{profile_data['client_id']}@{config.XUI_HOST}:{profile_data['port']}"
-        f"?type=tcp&security={profile_data['security']}&flow=xtls-rprx-direct"
-        f"&sni={config.XUI_SERVER_NAME}#TG{profile_data['email'].split('_')[1]}"
+        f"?type=tcp&security={profile_data['security']}&fp=chrome&alpn={alpn}"
+        f"&sni={config.XUI_SERVER_NAME}&flow=xtls-rprx-direct"
+        f"#Telegram%20User%20{user_tag}-{profile_data['email']}"
     )

@@ -185,7 +185,10 @@ async def connect_profile(callback: CallbackQuery):
             return
     
     # Загружаем данные профиля
-    profile_data = json.loads(user.vless_profile_data)
+    profile_data = safe_json_loads(user.vless_profile_data, default={})
+    if not profile_data:
+        await callback.message.answer("У вас пока нет созданного профиля.")
+        return
     vless_url = generate_vless_url(profile_data)
     
     text = (
@@ -244,3 +247,11 @@ async def back_to_menu(callback: CallbackQuery):
 def setup_handlers(dp: Dispatcher):
     dp.include_router(router)
     logger.info("Handlers setup completed")
+
+def safe_json_loads(data, default=None):
+    if not data:
+        return default
+    try:
+        return json.loads(data)
+    except Exception:
+        return default
