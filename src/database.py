@@ -15,6 +15,7 @@ class User(Base):
     registration_date = Column(DateTime, default=datetime.utcnow)
     subscription_end = Column(DateTime)
     vless_profile_id = Column(String)
+    vless_profile_data = Column(String)
     is_admin = Column(Boolean, default=False)
 
 class StaticProfile(Base):

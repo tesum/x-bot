@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import json
 from datetime import datetime, timedelta
 from aiogram import Dispatcher, Router, F
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
@@ -168,38 +169,38 @@ async def connect_profile(callback: CallbackQuery):
         await callback.answer("Подписка истекла! Продлите подписку.")
         return
     
-    if not user.vless_profile_id:
-        # Показываем пользователю, что идет создание профиля
+    if not user.vless_profile_data:
         await callback.message.edit_text("Создаем ваш VPN профиль...")
-        profile_id = await create_vless_profile(user.telegram_id)
-        if profile_id:
-            # Обновляем профиль в базе данных
+        profile_data = await create_vless_profile(user.telegram_id)
+        
+        if profile_data:
+            # Сохраняем данные профиля
             with Session() as session:
                 db_user = session.query(User).filter_by(telegram_id=user.telegram_id).first()
                 if db_user:
-                    db_user.vless_profile_id = profile_id
+                    db_user.vless_profile_data = json.dumps(profile_data)
                     session.commit()
         else:
             await callback.message.answer("Ошибка при создании профиля. Попробуйте позже.")
             return
     
-    if user.vless_profile_id:
-        vless_url = await generate_vless_url(user.vless_profile_id, user.telegram_id, config.XUI_HOST)
-        text = (
-            "**Ваш VPN профиль готов!**\n\n"
-            "**Инструкция по подключению:**\n"
-            "1. Скачайте приложение для вашей платформы:\n"
-            "   - Windows: [V2RayN](https://github.com/2dust/v2rayN/releases)\n"
-            "   - Android: [V2RayNG](https://github.com/2dust/v2rayNG/releases)\n"
-            "   - iOS: [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118)\n"
-            "   - Mac: [V2RayU](https://github.com/yanue/V2rayU/releases)\n\n"
-            "2. Скопируйте эту ссылку и импортируйте в приложение:\n"
-            f"`{vless_url}`\n\n"
-            "3. Активируйте соединение в приложении."
-        )
-        await callback.message.edit_text(text)
-    else:
-        await callback.answer("Ошибка создания профиля")
+    # Загружаем данные профиля
+    profile_data = json.loads(user.vless_profile_data)
+    vless_url = generate_vless_url(profile_data)
+    
+    text = (
+        "**Ваш VPN профиль готов!**\n\n"
+        "**Инструкция по подключению:**\n"
+        "1. Скачайте приложение для вашей платформы:\n"
+        "   - Windows: [V2RayN](https://github.com/2dust/v2rayN/releases)\n"
+        "   - Android: [V2RayNG](https://github.com/2dust/v2rayNG/releases)\n"
+        "   - iOS: [Shadowrocket](https://apps.apple.com/app/shadowrocket/id932747118)\n"
+        "   - Mac: [V2RayU](https://github.com/yanue/V2rayU/releases)\n\n"
+        "2. Скопируйте эту ссылку и импортируйте в приложение:\n"
+        f"`{vless_url}`\n\n"
+        "3. Активируйте соединение в приложении."
+    )
+    await callback.message.edit_text(text)
 
 @router.callback_query(F.data == "stats")
 async def user_stats(callback: CallbackQuery):

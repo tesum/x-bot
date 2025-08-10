@@ -11,7 +11,8 @@ class Config(BaseModel):
     XUI_API_URL: str = os.getenv("XUI_API_URL", "http://localhost:54321")
     XUI_USERNAME: str = os.getenv("XUI_USERNAME", "admin")
     XUI_PASSWORD: str = os.getenv("XUI_PASSWORD", "admin")
-    XUI_HOST: str = os.getenv("XUI_HOST", "your-server.com")
+    XUI_HOST: str = os.getenv("XUI_HOST", "your-server.com")  # Публичный адрес сервера
+    XUI_SERVER_NAME: str = os.getenv("XUI_SERVER_NAME", "domain.com")  # Домен для TLS
     PAYMENT_TOKEN: str = os.getenv("PAYMENT_TOKEN", "")
     
     PRICES: dict = {
