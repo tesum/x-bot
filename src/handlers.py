@@ -268,6 +268,7 @@ async def admin_user_list(callback: CallbackQuery):
 @router.callback_query(F.data == "user_list_active")
 async def handle_user_list_active(callback: CallbackQuery):
     users = await get_all_users(with_subscription=True)
+    await callback.answer()
     if not users:
         await callback.answer("Нет пользователей с активной подпиской")
         return
@@ -276,13 +277,14 @@ async def handle_user_list_active(callback: CallbackQuery):
     for user in users:
         expire_date = user.subscription_end.strftime("%d.%m.%Y %H:%M")
         username = f"@{user.username}" if user.username else "none"
-        text += f"• {user.full_name} ({username} | `{user.telegram_id}`) - до `{expire_date}`\n"
+        text += f"• {user.full_name} ({username} | <code>{user.telegram_id}</code>) - до <code>{expire_date}</code>\n"
     
-    await callback.message.answer(text, parse_mode="Markdown")
+    await callback.message.answer(text, parse_mode="HTML")
 
 @router.callback_query(F.data == "user_list_inactive")
 async def handle_user_list_inactive(callback: CallbackQuery):
     users = await get_all_users(with_subscription=False)
+    await callback.answer()
     if not users:
         await callback.answer("Нет пользователей без подписки")
         return
