@@ -114,13 +114,13 @@ async def menu_cmd(message: Message):
 async def help_msg(callback: CallbackQuery):
     await callback.answer()
     text = (
-        "О боте Dekim VPN:\n"
-        "Разработчики:\n"
-        "@QueenDekim и @cpn_moris\n"
-        "Отдельное спасибо @ascento за помощь в разработке\n"
-        "Официальный чат проекта: [ссылка](https://t.me/+OJsul9nc9hYzZjEy)"
+        "О боте <code>Dekim VPN | VLESS | Xray</code>:\n"
+        "<b>Разработчики</b>:\n"
+        "@QueenDekim | @cpn_moris\n"
+        "<i>Отдельное спасибо</i> @ascento <i>за помощь в разработке</i>\n"
+        "<a href='https://t.me/+OJsul9nc9hYzZjEy'>Официальный чат проекта</a>"
     )
-    await callback.message.answer(text, parse_mode='Markdown')
+    await callback.message.answer(text, parse_mode='HTML')
 
 @router.callback_query(F.data == "admin_menu")
 async def admin_menu(callback: CallbackQuery):
