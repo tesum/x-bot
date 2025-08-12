@@ -12,11 +12,13 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     telegram_id = Column(Integer, unique=True)
     full_name = Column(String)
+    username = Column(String)  # Новое поле для username
     registration_date = Column(DateTime, default=datetime.utcnow)
     subscription_end = Column(DateTime)
     vless_profile_id = Column(String)
     vless_profile_data = Column(String)
     is_admin = Column(Boolean, default=False)
+    notified = Column(Boolean, default=False)
 
 class StaticProfile(Base):
     __tablename__ = 'static_profiles'
@@ -25,31 +27,40 @@ class StaticProfile(Base):
     vless_url = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-engine = create_engine('sqlite:///users.db', echo=True)
+engine = create_engine('sqlite:///users.db', echo=False)
 Session = sessionmaker(bind=engine)
 
 async def init_db():
     Base.metadata.create_all(engine)
-    logger.info("Database tables created")
+    logger.info("✅ Database tables created")
 
 async def get_user(telegram_id: int):
     with Session() as session:
         return session.query(User).filter_by(telegram_id=telegram_id).first()
 
-async def create_user(telegram_id: int, full_name: str, is_admin: bool = False):
+async def create_user(telegram_id: int, full_name: str, username: str = None, is_admin: bool = False):
     with Session() as session:
         user = User(
             telegram_id=telegram_id,
             full_name=full_name,
-            subscription_end=datetime.utcnow() + timedelta(days=1),
+            username=username,  # Сохраняем username
+            subscription_end=datetime.utcnow() + timedelta(days=3),
             is_admin=is_admin
         )
         session.add(user)
         session.commit()
-        logger.info(f"New user created: {telegram_id}")
+        logger.info(f"✅ New user created: {telegram_id}")
         return user
 
-# Дополнительные функции БД
+async def delete_user_profile(telegram_id: int):
+    with Session() as session:
+        user = session.query(User).filter_by(telegram_id=telegram_id).first()
+        if user:
+            user.vless_profile_data = None
+            user.notified = False
+            session.commit()
+            logger.info(f"✅ User profile deleted: {telegram_id}")
+
 async def update_subscription(telegram_id: int, days: int):
     with Session() as session:
         user = session.query(User).filter_by(telegram_id=telegram_id).first()
@@ -59,7 +70,7 @@ async def update_subscription(telegram_id: int, days: int):
             else:
                 user.subscription_end = datetime.utcnow() + timedelta(days=days)
             session.commit()
-            logger.info(f"Subscription updated for {telegram_id}: +{days} days")
+            logger.info(f"✅ Subscription updated for {telegram_id}: +{days} days")
 
 async def get_all_users(with_subscription: bool = None):
     with Session() as session:
@@ -76,20 +87,12 @@ async def create_static_profile(name: str, vless_url: str):
         profile = StaticProfile(name=name, vless_url=vless_url)
         session.add(profile)
         session.commit()
-        logger.info(f"Static profile created: {name}")
+        logger.info(f"✅ Static profile created: {name}")
         return profile
 
 async def get_static_profiles():
     with Session() as session:
         return session.query(StaticProfile).all()
-
-async def delete_static_profile(profile_id: int):
-    with Session() as session:
-        profile = session.query(StaticProfile).filter_by(id=profile_id).first()
-        if profile:
-            session.delete(profile)
-            session.commit()
-            logger.info(f"Static profile deleted: {profile_id}")
 
 async def get_user_stats():
     with Session() as session:

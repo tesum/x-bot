@@ -1,27 +1,102 @@
+import json
 import asyncio
 import logging
+import warnings
 import coloredlogs
-from aiogram import Bot, Dispatcher
 from config import config
-from database import init_db
+from aiogram import Bot, Dispatcher
 from handlers import setup_handlers
+from datetime import datetime, timedelta
+from functions import delete_client_by_email
+from database import Session, User, init_db, get_all_users, delete_user_profile
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # Настройка логирования
-coloredlogs.install(level='DEBUG')
+coloredlogs.install(level='info')
 logger = logging.getLogger(__name__)
+
+async def check_subscriptions(bot: Bot):
+    """Проверка статуса подписок"""
+    while True:
+        try:
+            now = datetime.utcnow()
+            users = await get_all_users()
+            
+            for user in users:
+                # Проверка за 1 день до окончания
+                if user.subscription_end - now < timedelta(days=1) and not user.notified:
+                    try:
+                        await bot.send_message(
+                            user.telegram_id,
+                            "⚠️ Ваша подписка истекает через 24 часа! Продлите подписку, чтобы сохранить доступ."
+                        )
+                        # Помечаем как уведомленного
+                        with Session() as session:
+                            db_user = session.query(User).filter_by(telegram_id=user.telegram_id).first()
+                            if db_user:
+                                db_user.notified = True
+                                session.commit()
+                    except Exception as e:
+                        logger.warning(f"⚠️ Notification error: {e}")
+                
+                # Проверка истечения подписки
+                if user.subscription_end <= now and user.vless_profile_data:
+                    try:
+                        profile = json.loads(user.vless_profile_data)
+                        # Удаляем из инбаунда
+                        await delete_client_by_email(profile["email"])
+                        # Удаляем профиль из БД
+                        await delete_user_profile(user.telegram_id)
+                        
+                        await bot.send_message(
+                            user.telegram_id,
+                            "❌ Ваша подписка истекла! Профиль VPN был удален. Продлите подписку, чтобы создать новый."
+                        )
+                    except Exception as e:
+                        logger.warning(f"⚠️ Deletion error: {e}")
+        except Exception as e:
+            logger.warning(f"⚠️ Subscription check error: {e}")
+        
+        await asyncio.sleep(3600)  # Проверка каждый час
 
 async def main():
     bot = Bot(token=config.BOT_TOKEN)
     dp = Dispatcher()
     
-    await init_db()
-    logger.info("Database initialized")
+    try:
+        await init_db()
+        logger.info("✅ Database initialized")
+    except Exception as e:
+        logger.error(f"❌ Database initialization error: {e}")
+        return
     
-    setup_handlers(dp)
-    logger.info("Handlers registered")
+    try:
+        setup_handlers(dp)
+        logger.info("✅ Handlers registered")
+    except Exception as e:
+        logger.error(f"❌ Handler registration error: {e}")
+        return
     
-    logger.info("Starting bot...")
-    await dp.start_polling(bot)
+    # Запускаем фоновую задачу проверки подписок
+    try:
+        asyncio.create_task(check_subscriptions(bot))
+    except Exception as e:
+        logger.error(f"❌ Subscription check task failed to start: {e}")
+    
+    logger.info("ℹ️  Starting bot...")
+    try:
+        await dp.start_polling(bot)
+    except Exception as e:
+        logger.error(f"❌ Bot start error: {e}")
+        return
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("👋 Stopping bot...")
+        exit(0)
+    except Exception as e:
+        logger.error(f"❌ Main loop error: {e}")
+        exit(1)
