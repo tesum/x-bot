@@ -150,6 +150,7 @@ class XUIAPI:
             client_id = str(uuid.uuid4())
             email = f"user_{telegram_id}_{random.randint(1000,9999)}"
             
+            # Обновленные настройки для Reality
             new_client = {
                 "id": client_id,
                 "flow": "",
@@ -160,7 +161,12 @@ class XUIAPI:
                 "enable": True,
                 "tgId": "",
                 "subId": "",
-                "reset": 0
+                "reset": 0,
+                # Добавляем настройки для Reality
+                "fingerprint": config.REALITY_FINGERPRINT,
+                "publicKey": config.REALITY_PUBLIC_KEY,
+                "shortId": config.REALITY_SHORT_ID,
+                "spiderX": config.REALITY_SPIDER_X
             }
             
             clients.append(new_client)
@@ -187,8 +193,15 @@ class XUIAPI:
                     "client_id": client_id,
                     "email": email,
                     "port": inbound["port"],
-                    "security": "none",
-                    "remark": inbound["remark"]
+                    # Указываем тип безопасности как reality
+                    "security": "reality",
+                    "remark": inbound["remark"],
+                    # Добавляем необходимые параметры для Reality
+                    "sni": config.REALITY_SNI,
+                    "pbk": config.REALITY_PUBLIC_KEY,
+                    "fp": config.REALITY_FINGERPRINT,
+                    "sid": config.REALITY_SHORT_ID,
+                    "spx": config.REALITY_SPIDER_X
                 }
             return None
         except Exception as e:
@@ -212,6 +225,7 @@ class XUIAPI:
             
             client_id = str(uuid.uuid4())
             
+            # Обновленные настройки для Reality
             new_client = {
                 "id": client_id,
                 "flow": "",
@@ -222,7 +236,12 @@ class XUIAPI:
                 "enable": True,
                 "tgId": "",
                 "subId": "",
-                "reset": 0
+                "reset": 0,
+                # Добавляем настройки для Reality
+                "fingerprint": config.REALITY_FINGERPRINT,
+                "publicKey": config.REALITY_PUBLIC_KEY,
+                "shortId": config.REALITY_SHORT_ID,
+                "spiderX": config.REALITY_SPIDER_X
             }
             
             clients.append(new_client)
@@ -249,8 +268,15 @@ class XUIAPI:
                     "client_id": client_id,
                     "email": profile_name,
                     "port": inbound["port"],
-                    "security": "none",
-                    "remark": inbound["remark"]
+                    # Указываем тип безопасности как reality
+                    "security": "reality",
+                    "remark": inbound["remark"],
+                    # Добавляем необходимые параметры для Reality
+                    "sni": config.REALITY_SNI,
+                    "pbk": config.REALITY_PUBLIC_KEY,
+                    "fp": config.REALITY_FINGERPRINT,
+                    "sid": config.REALITY_SHORT_ID,
+                    "spx": config.REALITY_SPIDER_X
                 }
             return None
         except Exception as e:
@@ -373,6 +399,11 @@ def generate_vless_url(profile_data: dict) -> str:
     
     return (
         f"vless://{profile_data['client_id']}@{config.XUI_HOST}:{profile_data['port']}"
-        f"?type=tcp&security=none"
+        f"?type=tcp&security=reality"
+        f"&pbk={config.REALITY_PUBLIC_KEY}"
+        f"&fp={config.REALITY_FINGERPRINT}"
+        f"&sni={config.REALITY_SNI}"
+        f"&sid={config.REALITY_SHORT_ID}"
+        f"&spx={config.REALITY_SPIDER_X}"
         f"#{fragment}"
     )

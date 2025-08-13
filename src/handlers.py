@@ -115,7 +115,7 @@ async def help_msg(callback: CallbackQuery):
     await callback.answer()
     text = (
         "О боте <code>Dekim VPN | VLESS | Xray</code>:\n"
-        "<b>Разработчики</b>:\n"
+        "<b>Разработчики:</b>\n"
         "@QueenDekim | @cpn_moris\n"
         "<i>Отдельное спасибо</i> @ascento <i>за помощь в разработке</i>\n"
         "<a href='https://t.me/+OJsul9nc9hYzZjEy'>Официальный чат проекта</a>"
@@ -283,8 +283,8 @@ async def handle_user_list_active(callback: CallbackQuery):
 
 @router.callback_query(F.data == "user_list_inactive")
 async def handle_user_list_inactive(callback: CallbackQuery):
-    users = await get_all_users(with_subscription=False)
     await callback.answer()
+    users = await get_all_users(with_subscription=False)
     if not users:
         await callback.answer("Нет пользователей без подписки")
         return
@@ -472,8 +472,8 @@ async def connect_profile(callback: CallbackQuery):
     builder.button(text='🖥️ Windows [V2RayN]', url='https://github.com/2dust/v2rayN/releases/download/7.13.8/v2rayN-windows-64-desktop.zip')
     builder.button(text='🐧 Linux [NekoBox]', url='https://github.com/MatsuriDayo/nekoray/releases/download/4.0.1/nekoray-4.0.1-2024-12-12-debian-x64.deb')
     builder.button(text='🍎 Mac [V2RayU]', url='https://github.com/yanue/V2rayU/releases/download/v4.2.6/V2rayU-64.dmg ')
+    builder.button(text='🍏 iOS [V2RayTun]', url='https://apps.apple.com/ru/app/v2raytun/id6476628951')
     builder.button(text='🤖 Android [V2RayNG]', url='https://github.com/2dust/v2rayNG/releases/download/1.10.16/v2rayNG_1.10.16_arm64-v8a.apk')
-    builder.button(text='🍏 iOS [Shadowrocket]', url='https://apps.apple.com/app/shadowrocket/id932747118')
     builder.adjust(2, 2, 1)
 
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode='Markdown')
@@ -497,6 +497,7 @@ async def user_stats(callback: CallbackQuery):
 
 @router.callback_query(F.data == "admin_network_stats")
 async def network_stats(callback: CallbackQuery):
+    await callback.answer()
     text = (
         "📊 **Статистика использования сети:**\n\n"
         "📆 За месяц:\n"
@@ -515,6 +516,7 @@ async def process_payment(callback: CallbackQuery):
 
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: CallbackQuery):
+    await callback.answer()
     await menu_cmd(callback.message)
 
 def setup_handlers(dp: Dispatcher):

@@ -15,15 +15,21 @@ class Config(BaseModel):
     XUI_HOST: str = os.getenv("XUI_HOST", "your-server.com")
     XUI_SERVER_NAME: str = os.getenv("XUI_SERVER_NAME", "domain.com")
     PAYMENT_TOKEN: str = os.getenv("PAYMENT_TOKEN", "")
-    INBOUND_ID: int = Field(default=os.getenv("INBOUND_ID", 0))
-    
+    INBOUND_ID: int = Field(default=os.getenv("INBOUND_ID", 1))
+    REALITY_PUBLIC_KEY: str = os.getenv("REALITY_PUBLIC_KEY", "")
+    REALITY_FINGERPRINT: str = os.getenv("REALITY_FINGERPRINT", "chrome")
+    REALITY_SNI: str = os.getenv("REALITY_SNI", "example.com")
+    REALITY_SHORT_ID: str = os.getenv("REALITY_SHORT_ID", "1234567890")
+    REALITY_SPIDER_X: str = os.getenv("REALITY_SPIDER_X", "/")
+
+
     PRICES: dict = {
-        1: 100,
-        3: 280,
-        6: 500,
-        12: 900
+        1: 0,
+        3: 0,
+        6: 0,
+        12: 0
     }
-    DISCOUNT_PERCENT: int = 10
+    DISCOUNT_PERCENT: int = 100
 
     @field_validator('ADMINS', mode='before')
     def parse_admins(cls, value):
