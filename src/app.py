@@ -5,6 +5,7 @@ import warnings
 import coloredlogs
 from config import config
 from aiogram import Bot, Dispatcher
+from aiogram.types import PreCheckoutQuery
 from handlers import setup_handlers
 from datetime import datetime, timedelta
 from functions import delete_client_by_email
@@ -45,14 +46,17 @@ async def check_subscriptions(bot: Bot):
                     try:
                         profile = json.loads(user.vless_profile_data)
                         # Удаляем из инбаунда
-                        await delete_client_by_email(profile["email"])
-                        # Удаляем профиль из БД
-                        await delete_user_profile(user.telegram_id)
-                        
-                        await bot.send_message(
-                            user.telegram_id,
-                            "❌ Ваша подписка истекла! Профиль VPN был удален. Продлите подписку, чтобы создать новый."
-                        )
+                        success = await delete_client_by_email(profile["email"])
+                        if success:
+                            # Удаляем профиль из БД
+                            await delete_user_profile(user.telegram_id)
+                            
+                            await bot.send_message(
+                                user.telegram_id,
+                                "❌ Ваша подписка истекла! Профиль VPN был удален. Продлите подписку, чтобы создать новый."
+                            )
+                        else:
+                            logger.warning(f"⚠️ Failed to delete client {profile['email']} from inbound")
                     except Exception as e:
                         logger.warning(f"⚠️ Deletion error: {e}")
         except Exception as e:
@@ -77,6 +81,11 @@ async def main():
     except Exception as e:
         logger.error(f"❌ Handler registration error: {e}")
         return
+    
+    # Обработчик для предварительной проверки платежа
+    @dp.pre_checkout_query()
+    async def process_pre_checkout_query(pre_checkout_query: PreCheckoutQuery):
+        await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
     
     # Запускаем фоновую задачу проверки подписок
     try:

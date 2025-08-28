@@ -3,7 +3,7 @@ import logging
 import json
 from datetime import datetime, timedelta
 from aiogram import Dispatcher, Router, F, Bot
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, LabeledPrice, PreCheckoutQuery
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -14,7 +14,7 @@ from database import (
     get_all_users, create_static_profile, get_static_profiles, 
     User, Session, get_user_stats as db_user_stats
 )
-from functions import create_vless_profile, delete_client_by_email, generate_vless_url, get_user_stats, create_static_client
+from functions import create_vless_profile, delete_client_by_email, generate_vless_url, get_user_stats, create_static_client, get_global_stats, get_online_users
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,53 @@ class AdminStates(StatesGroup):
     REMOVE_TIME_AMOUNT = State()
     SEND_MESSAGE_TARGET = State()
 
+async def show_menu(bot: Bot, chat_id: int, message_id: int = None):
+    """Функция для отображения меню (может как редактировать существующее сообщение, так и отправлять новое)"""
+    user = await get_user(chat_id)
+    if not user:
+        return
+    
+    status = "Активна" if user.subscription_end > datetime.utcnow() else "Истекла"
+    expire_date = user.subscription_end.strftime("%d-%m-%Y %H:%M") if status == "Активна" else status
+    
+    text = (
+        f"**Имя профиля**: `{user.full_name}`\n"
+        f"**Id**: `{user.telegram_id}`\n"
+        f"**Подписка**: `{status}`\n"
+        f"**Дата окончания подписки**: `{expire_date}`"
+    )
+    
+    builder = InlineKeyboardBuilder()
+    builder.button(text="💵 Продлить" if status=="Активна" else "💵 Оплатить", callback_data="renew_sub")
+    builder.button(text="✅ Подключить", callback_data="connect")
+    builder.button(text="📊 Статистика", callback_data="stats")
+    builder.button(text="ℹ️ Помощь", callback_data="help")
+    
+    if user.is_admin:
+        builder.button(text="⚠️ Админ. меню", callback_data="admin_menu")
+    
+    builder.adjust(2, 2, 1)
+    
+    if message_id:
+        # Редактируем существующее сообщение
+        await bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=text,
+            reply_markup=builder.as_markup(),
+            parse_mode='Markdown'
+        )
+    else:
+        # Отправляем новое сообщение
+        await bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            reply_markup=builder.as_markup(),
+            parse_mode='Markdown'
+        )
+
 @router.message(Command("start"))
-async def start_cmd(message: Message):
+async def start_cmd(message: Message, bot: Bot):
     logger.info(f"ℹ️  Start command from {message.from_user.id}")
     user = await get_user(message.from_user.id)
     
@@ -63,13 +108,13 @@ async def start_cmd(message: Message):
             session.commit()
             logger.info(f"🔄 Updated user data: {message.from_user.id}")
     
-    await menu_cmd(message)
+    await show_menu(bot, message.from_user.id)
 
 @router.message(Command("menu"))
-async def menu_cmd(message: Message):
+async def menu_cmd(message: Message, bot: Bot):
     user = await get_user(message.from_user.id)
     if not user:
-        await start_cmd(message)
+        await start_cmd(message, bot)
         return
     
     # Проверяем изменения данных
@@ -88,27 +133,7 @@ async def menu_cmd(message: Message):
             session.commit()
             logger.info(f"🔄 Updated user data in menu: {message.from_user.id}")
     
-    status = "Активна" if user.subscription_end > datetime.utcnow() else "Истекла"
-    expire_date = user.subscription_end.strftime("%d-%m-%Y %H:%M") if status == "Активна" else status
-    
-    text = (
-        f"**Имя профиля**: `{user.full_name}`\n"
-        f"**Id**: `{user.telegram_id}`\n"
-        f"**Подписка**: `{status}`\n"
-        f"**Дата окончания подписки**: `{expire_date}`"
-    )
-    
-    builder = InlineKeyboardBuilder()
-    builder.button(text="💵 Продлить", callback_data="renew_sub")
-    builder.button(text="✅ Подключить", callback_data="connect")
-    builder.button(text="📊 Статистика", callback_data="stats")
-    builder.button(text="ℹ️ Помощь", callback_data="help")
-    
-    if user.is_admin:
-        builder.button(text="⚠️ Админ. меню", callback_data="admin_menu")
-    
-    builder.adjust(2, 2, 1)
-    await message.answer(text, reply_markup=builder.as_markup(), parse_mode='Markdown')
+    await show_menu(bot, message.from_user.id)
 
 @router.callback_query(F.data == "help")
 async def help_msg(callback: CallbackQuery):
@@ -122,6 +147,114 @@ async def help_msg(callback: CallbackQuery):
     )
     await callback.message.answer(text, parse_mode='HTML')
 
+@router.callback_query(F.data == "renew_sub")
+async def renew_subscription(callback: CallbackQuery):
+    builder = InlineKeyboardBuilder()
+    
+    # Добавляем кнопки для каждого варианта подписки
+    for months in sorted(config.PRICES.keys()):
+        price_info = config.PRICES[months]
+        final_price = config.calculate_price(months)
+        
+        discount_text = ""
+        if price_info["discount_percent"] > 0:
+            discount_text = f" (-{price_info['discount_percent']}%)"
+            
+        button_text = f"{months} мес. - {final_price} руб.{discount_text}"
+        builder.button(text=button_text, callback_data=f"pay_{months}")
+    
+    builder.button(text="⬅️ Назад", callback_data="back_to_menu")
+    builder.adjust(1)
+    
+    await callback.message.edit_text(
+        "💵 **Выберите период подписки:**",
+        reply_markup=builder.as_markup(),
+        parse_mode='Markdown'
+    )
+
+@router.callback_query(F.data.startswith("pay_"))
+async def process_payment(callback: CallbackQuery, bot: Bot):
+    await callback.answer()
+    
+    try:
+        months = int(callback.data.split("_")[1])
+        if months not in config.PRICES:
+            await callback.message.answer("❌ Неверный период подписки")
+            return
+            
+        final_price = config.calculate_price(months)
+        suffix = "месяц" if months == 1 else "месяца" if months in (2,3,4) else "месяцев"
+        # Создаем инвойс для оплаты
+        prices = [LabeledPrice(label=f"VPN подписка на {months} мес.", amount=final_price * 100)]
+        if config.PAYMENT_TOKEN:
+            await bot.send_invoice(
+                chat_id=callback.from_user.id,
+                title=f"VPN подписка на {months} месяцев",
+                description=f"Доступ к VPN сервису на {months} {suffix}",
+                payload=f"subscription_{months}",
+                provider_token=config.PAYMENT_TOKEN,
+                currency="RUB",
+                prices=prices,
+                start_parameter="create_subscription",
+                need_email=True,
+                need_phone_number=False
+            )
+        else:
+            await callback.message.answer("❌ Оплата временно недоступна")
+    except Exception as e:
+        logger.error(f"❌ Payment error: {e}")
+        await callback.message.answer("❌ Ошибка при создании счета на оплату")
+
+@router.pre_checkout_query()
+async def process_pre_checkout_query(pre_checkout_query: PreCheckoutQuery, bot: Bot):
+    await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
+
+@router.message(F.successful_payment)
+async def process_successful_payment(message: Message, bot: Bot):
+    try:
+        # Извлекаем информацию из payload
+        payload = message.successful_payment.invoice_payload
+        if payload.startswith("subscription_"):
+            months = int(payload.split("_")[1])
+            final_price = config.calculate_price(months)  # Переводим обратно в рубли
+            
+            # Получаем информацию о пользователе
+            user = await get_user(message.from_user.id)
+            if not user:
+                await message.answer("❌ Ошибка: пользователь не найден")
+                return
+            
+            # Определяем тип действия (покупка или продление)
+            now = datetime.utcnow()
+            action_type = "продлена" if user.subscription_end > now else "куплена"
+            
+            # Обновляем подписку
+            success = await update_subscription(message.from_user.id, months)
+            suffix = "месяц" if months == 1 else "месяца" if months in (2,3,4) else "месяцев"
+            if success:
+                await message.answer(
+                    f"✅ Оплата прошла успешно! Ваша подписка {action_type} на {months} {suffix}.\n\n"
+                    "Спасибо за покупку! 🎉"
+                )
+                
+                # Отправляем уведомление администраторам
+                admin_message = (
+                    f"{action_type.capitalize()} подписка пользователем "
+                    f"`{user.full_name}` | `{user.telegram_id}` "
+                    f"на {months} {suffix} - {final_price}₽"
+                )
+                
+                for admin_id in config.ADMINS:
+                    try:
+                        await bot.send_message(admin_id, admin_message, parse_mode='Markdown')
+                    except Exception as e:
+                        logger.error(f"Failed to send notification to admin {admin_id}: {e}")
+            else:
+                await message.answer("❌ Ошибка при обновлении подписки")
+    except Exception as e:
+        logger.error(f"Successful payment processing error: {e}")
+        await message.answer("❌ Ошибка при обработке платежа")
+
 @router.callback_query(F.data == "admin_menu")
 async def admin_menu(callback: CallbackQuery):
     user = await get_user(callback.from_user.id)
@@ -130,13 +263,13 @@ async def admin_menu(callback: CallbackQuery):
         return
     
     total, with_sub, without_sub = await db_user_stats()
-    online_count = 0
+    online_count = await get_online_users()
     
     text = (
         "**Административное меню**\n\n"
         f"**Всего пользователей**: `{total}`\n"
         f"**С подпиской/Без подписки**: `{with_sub}`/`{without_sub}`\n"
-        f"**Онлайн**: `{online_count}` | **Офлайн**: `{total - online_count}`"
+        f"**Онлайн**: `{online_count}` | **Офлайн**: `{with_sub - online_count}`"
     )
     
     builder = InlineKeyboardBuilder()
@@ -487,37 +620,51 @@ async def user_stats(callback: CallbackQuery):
     await callback.message.edit_text("⚙️ Загружаем вашу статистику...")
     profile_data = safe_json_loads(user.vless_profile_data, default={})
     stats = await get_user_stats(profile_data["email"])
+
+    logger.info(stats)
+    upload = f"{stats.get('upload', 0) / 1024 / 1024:.2f}"
+    upload_size = 'MB' if int(float(upload)) < 1024 else 'GB'
+    if upload_size == "GB":
+        upload = f"{int(float(upload) / 1024):.2f}"
+
+    download = f"{stats.get('download', 0) / 1024 / 1024:.2f}"
+    download_size = 'MB' if int(float(download)) < 1024 else 'GB'
+    if download_size == "GB":
+        download = f"{int(float(download) / 1024):.2f}"
+
     await callback.message.delete()
     text = (
         "📊 **Ваша статистика:**\n\n"
-        f"🔼 Загружено: `{stats.get('upload', 0) / 1024 / 1024:.2f} MB`\n"
-        f"🔽 Скачано: `{stats.get('download', 0) / 1024 / 1024:.2f} MB`"
+        f"🔼 Загружено: `{upload} {upload_size}`\n"
+        f"🔽 Скачано: `{download} {download_size}`\n"
     )
     await callback.message.answer(text, parse_mode='Markdown')
 
 @router.callback_query(F.data == "admin_network_stats")
 async def network_stats(callback: CallbackQuery):
+    stats = await get_global_stats()
+
+    upload = f"{stats.get('upload', 0) / 1024 / 1024:.2f}"
+    upload_size = 'MB' if int(float(upload)) < 1024 else 'GB'
+    if upload_size == "GB":
+        upload = f"{int(float(upload) / 1024):.2f}"
+
+    download = f"{stats.get('download', 0) / 1024 / 1024:.2f}"
+    download_size = 'MB' if int(float(download)) < 1024 else 'GB'
+    if download_size == "GB":
+        download = f"{int(float(download) / 1024):.2f}"
+    
     await callback.answer()
     text = (
         "📊 **Статистика использования сети:**\n\n"
-        "📆 За месяц:\n"
-        "🔼 Upload - `15.2 GB` | 🔽 Download - `42.7 GB`\n\n"
-        "🗓️ За всё время:\n"
-        "🔼 Upload - `152.3 GB` | 🔽 Download - `427.8 GB`"
+        f"🔼 Upload - `{upload} {upload_size}` | 🔽 Download - `{download} {download_size}`"
     )
     await callback.message.answer(text, parse_mode='Markdown')
 
-@router.callback_query(F.data.startswith("pay_"))
-async def process_payment(callback: CallbackQuery):
-    months = int(callback.data.split("_")[1])
-    await callback.answer("⚠️ Оплата временно недоступна")
-    await update_subscription(callback.from_user.id, months * 30)
-    await menu_cmd(callback.message)
-
 @router.callback_query(F.data == "back_to_menu")
-async def back_to_menu(callback: CallbackQuery):
+async def back_to_menu(callback: CallbackQuery, bot: Bot):
     await callback.answer()
-    await menu_cmd(callback.message)
+    await show_menu(bot, callback.from_user.id, callback.message.message_id)
 
 def setup_handlers(dp: Dispatcher):
     dp.include_router(router)

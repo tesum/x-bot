@@ -12,7 +12,7 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     telegram_id = Column(Integer, unique=True)
     full_name = Column(String)
-    username = Column(String)  # Новое поле для username
+    username = Column(String)
     registration_date = Column(DateTime, default=datetime.utcnow)
     subscription_end = Column(DateTime)
     vless_profile_id = Column(String)
@@ -43,7 +43,7 @@ async def create_user(telegram_id: int, full_name: str, username: str = None, is
         user = User(
             telegram_id=telegram_id,
             full_name=full_name,
-            username=username,  # Сохраняем username
+            username=username,
             subscription_end=datetime.utcnow() + timedelta(days=3),
             is_admin=is_admin
         )
@@ -61,16 +61,25 @@ async def delete_user_profile(telegram_id: int):
             session.commit()
             logger.info(f"✅ User profile deleted: {telegram_id}")
 
-async def update_subscription(telegram_id: int, days: int):
+async def update_subscription(telegram_id: int, months: int):
+    """Обновляет подписку с учетом текущего состояния"""
     with Session() as session:
         user = session.query(User).filter_by(telegram_id=telegram_id).first()
         if user:
-            if user.subscription_end > datetime.utcnow():
-                user.subscription_end += timedelta(days=days)
+            now = datetime.utcnow()
+            # Если подписка активна, добавляем к текущей дате окончания
+            if user.subscription_end > now:
+                user.subscription_end += timedelta(days=months * 30)
             else:
-                user.subscription_end = datetime.utcnow() + timedelta(days=days)
+                # Если подписка истекла, начинаем с текущей даты
+                user.subscription_end = now + timedelta(days=months * 30)
+            
+            # Сбрасываем флаг уведомления
+            user.notified = False
             session.commit()
-            logger.info(f"✅ Subscription updated for {telegram_id}: +{days} days")
+            logger.info(f"✅ Subscription updated for {telegram_id}: +{months} months")
+            return True
+        return False
 
 async def get_all_users(with_subscription: bool = None):
     with Session() as session:

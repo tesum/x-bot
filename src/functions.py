@@ -359,6 +359,72 @@ class XUIAPI:
         except Exception as e:
             logger.error(f"🛑 Stats error: {e}")
         return {"upload": 0, "download": 0}
+    
+    async def get_global_stats(self, inbound_id: int):
+        """Получение статистики по email"""
+        if not await self.login():
+            logger.error("🛑 Login failed before getting stats")
+            return {"upload": 0, "download": 0}
+        
+        try:
+            base_url = config.XUI_API_URL.rstrip('/')
+            base_path = config.XUI_BASE_PATH.strip('/')
+            if base_path:
+                base_url = f"{base_url}/{base_path}"
+            url = f"{base_url}/api/inbounds/get/{inbound_id}"
+            
+            async with self.session.get(url) as resp:
+                if resp.status != 200:
+                    return {"upload": 0, "download": 0}
+                
+                try:
+                    data = await resp.json()
+                    if data.get("success"):
+                        client_data = data.get("obj")
+                        if isinstance(client_data, dict):
+                            return {
+                                "upload": client_data.get("up", 0),
+                                "download": client_data.get("down", 0)
+                            }
+                except:
+                    return {"upload": 0, "download": 0}
+        except Exception as e:
+            logger.error(f"🛑 Stats error: {e}")
+        return {"upload": 0, "download": 0}
+
+    async def get_online_users(self):
+        if not await self.login():
+            logger.error("🛑 Login failed before getting stats")
+            return {"upload": 0, "download": 0}
+        
+        try:
+            base_url = config.XUI_API_URL.rstrip('/')
+            base_path = config.XUI_BASE_PATH.strip('/')
+            if base_path:
+                base_url = f"{base_url}/{base_path}"
+            url = f"{base_url}/api/inbounds/onlines"
+            
+            async with self.session.post(url) as resp:
+                if resp.status != 200:
+                    return 0
+
+                
+                try:
+                    data = await resp.json()
+                    logger.info(data)
+                    online = 0
+                    if data.get("success"):
+                        users = data.get("obj")
+                        if isinstance(users, list):
+                            for user in users:
+                                if str(user).startswith("user_"):
+                                    online += 1
+                        return online
+                except:
+                    return 0
+        except Exception as e:
+            logger.error(f"🛑 Stats error: {e}")
+        return {"upload": 0, "download": 0}
 
     async def close(self):
         if self.session:
@@ -382,6 +448,20 @@ async def delete_client_by_email(email: str):
     api = XUIAPI()
     try:
         return await api.delete_client(email)
+    finally:
+        await api.close()
+
+async def get_global_stats():
+    api = XUIAPI()
+    try:
+        return await api.get_global_stats(config.INBOUND_ID)
+    finally:
+        await api.close()
+
+async def get_online_users():
+    api = XUIAPI()
+    try:
+        return await api.get_online_users()
     finally:
         await api.close()
 
