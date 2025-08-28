@@ -1,6 +1,9 @@
-**Язык / Language:** <ins style="color:#4daafc">Русский</ins> **|** [English](./docs/README.en_US.md)
+**Язык / Language:** <ins>Русский</ins> **|** [English](./docs/README.en_US.md)
+
 
 # XRay VPN bot [Telegram]
+
+<div id="header" align="center"><img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/QueenDekim/XRay-bot"> <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/QueenDekim/XRay-bot"><br><img alt="GitHub top language" src="https://img.shields.io/github/languages/top/QueenDekim/XRay-bot"> <a href="./LICENSE" target="_blank"><img alt="GitHub License" src="https://img.shields.io/github/license/QueenDekim/XRay-bot"></a></div>
 
 ## Описание проекта
 
