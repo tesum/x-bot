@@ -1,6 +1,6 @@
 **Язык / Language:** [Русский](../README.md) **|** <ins>English</ins>
 
-# XRay VPN Bot [Telegram]
+<div id="header" align="center"><h1>XRay VPN Bot [Telegram]</h1></div>
 
 <div id="header" align="center"><img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/QueenDekim/XRay-bot"> <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/QueenDekim/XRay-bot"><br><img alt="GitHub top language" src="https://img.shields.io/github/languages/top/QueenDekim/XRay-bot"> <a href="./LICENSE" target="_blank"><img alt="GitHub License" src="https://img.shields.io/github/license/QueenDekim/XRay-bot"></a></div>
 
@@ -209,3 +209,10 @@ The bot automatically checks subscriptions every hour and:
 ---
 
 *For additional information, refer to the [aiogram](https://docs.aiogram.dev/en/latest/) and [3X-UI](https://github.com/MHSanaei/3x-ui/wiki) documentation.*
+
+---
+
+| Demo - Fully functional bot                            | Communication with the developer                 |
+| ------------------------------------------------------ | ------------------------------------------------ |
+| Telegram: [@Dekim_vpn_bot](https://t.me/Dekim_vpn_bot) | Telegram: [@QueenDek1m](https://t.me/QueenDek1m) |
+|                                                        | Discord: `from_russia_with_love`                 |
