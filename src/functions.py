@@ -411,7 +411,7 @@ class XUIAPI:
                 
                 try:
                     data = await resp.json()
-                    logger.info(data)
+                    logger.debug(data)
                     online = 0
                     if data.get("success"):
                         users = data.get("obj")

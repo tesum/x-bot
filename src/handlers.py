@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 router = Router()
 
+MAX_MESSAGE_LENGTH = 4096
+
 class AdminStates(StatesGroup):
     ADD_TIME = State()
     REMOVE_TIME = State()
@@ -30,6 +32,24 @@ class AdminStates(StatesGroup):
     ADD_TIME_AMOUNT = State()
     REMOVE_TIME_AMOUNT = State()
     SEND_MESSAGE_TARGET = State()
+
+def split_text(text: str, max_length: int = MAX_MESSAGE_LENGTH) -> list:
+    """Разбивает текст на части указанной максимальной длины"""
+    if len(text) <= max_length:
+        return [text]
+    
+    parts = []
+    while text:
+        if len(text) <= max_length:
+            parts.append(text)
+            break
+        part = text[:max_length]
+        last_newline = part.rfind('\n')
+        if last_newline != -1:
+            part = part[:last_newline]
+        parts.append(part)
+        text = text[len(part):].lstrip()
+    return parts
 
 async def show_menu(bot: Bot, chat_id: int, message_id: int = None):
     """Функция для отображения меню (может как редактировать существующее сообщение, так и отправлять новое)"""
@@ -96,7 +116,7 @@ async def start_cmd(message: Message, bot: Bot):
             username=message.from_user.username,
             is_admin=is_admin
         )
-        await message.answer("Добро пожаловать! 🎉\nВам предоставлен **бесплатный** тестовый период на **3 дня**!", parse_mode='Markdown')
+        await message.answer(f"Добро пожаловать в VPN бота `{(await bot.get_me()).full_name}`!\nВам предоставлен **бесплатный** тестовый период на **3 дня**!", parse_mode='Markdown')
         await asyncio.sleep(2)
     
     # Обновляем данные если есть изменения
@@ -138,14 +158,16 @@ async def menu_cmd(message: Message, bot: Bot):
 @router.callback_query(F.data == "help")
 async def help_msg(callback: CallbackQuery):
     await callback.answer()
+    builder = InlineKeyboardBuilder()
+    builder.button(text="⬅️ Назад", callback_data="back_to_menu")
     text = (
-        "О боте <code>Dekim VPN | VLESS | Xray</code>:\n"
+        f"О боте:\n"
         "<b>Разработчики:</b>\n"
         "@QueenDekim | @cpn_moris\n"
         "<i>Отдельное спасибо</i> @ascento <i>за помощь в разработке</i>\n"
         "<a href='https://t.me/+OJsul9nc9hYzZjEy'>Официальный чат проекта</a>"
     )
-    await callback.message.answer(text, parse_mode='HTML')
+    await callback.message.answer(text, parse_mode='HTML', reply_markup=builder.as_markup())
 
 @router.callback_query(F.data == "renew_sub")
 async def renew_subscription(callback: CallbackQuery):
@@ -202,7 +224,7 @@ async def process_payment(callback: CallbackQuery, bot: Bot):
         else:
             await callback.message.answer("❌ Оплата временно недоступна")
     except Exception as e:
-        logger.error(f"❌ Payment error: {e}")
+        logger.error(f"🛑 Payment error: {e}")
         await callback.message.answer("❌ Ошибка при создании счета на оплату")
 
 @router.pre_checkout_query()
@@ -248,11 +270,11 @@ async def process_successful_payment(message: Message, bot: Bot):
                     try:
                         await bot.send_message(admin_id, admin_message, parse_mode='Markdown')
                     except Exception as e:
-                        logger.error(f"Failed to send notification to admin {admin_id}: {e}")
+                        logger.error(f"🛑 Failed to send notification to admin {admin_id}: {e}")
             else:
                 await message.answer("❌ Ошибка при обновлении подписки")
     except Exception as e:
-        logger.error(f"Successful payment processing error: {e}")
+        logger.error(f"🛑 Successful payment processing error: {e}")
         await message.answer("❌ Ошибка при обработке платежа")
 
 @router.callback_query(F.data == "admin_menu")
@@ -277,9 +299,9 @@ async def admin_menu(callback: CallbackQuery):
     builder.button(text="- время", callback_data="admin_remove_time")
     builder.button(text="📋 Список пользователей", callback_data="admin_user_list")
     builder.button(text="📊 Статистика исп. сети", callback_data="admin_network_stats")
-    builder.button(text="📢 Рассылка", callback_data="admin_send_message")  # Новая кнопка рассылки
+    builder.button(text="📢 Рассылка", callback_data="admin_send_message")
     builder.button(text="⬅️ Назад", callback_data="back_to_menu")
-    builder.adjust(2, 1, 1, 1, 1)  # Обновленная раскладка
+    builder.adjust(2, 1, 1, 1, 1)
     
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode='Markdown')
 
@@ -410,8 +432,16 @@ async def handle_user_list_active(callback: CallbackQuery):
     for user in users:
         expire_date = user.subscription_end.strftime("%d.%m.%Y %H:%M")
         username = f"@{user.username}" if user.username else "none"
-        text += f"• {user.full_name} ({username} | <code>{user.telegram_id}</code>) - до <code>{expire_date}</code>\n"
+        user_line = f"• {user.full_name} ({username} | <code>{user.telegram_id}</code>) - до <code>{expire_date}</code>\n"
+        
+        # Если текст становится слишком длинным, отправляем текущую часть и начинаем новую
+        if len(text) + len(user_line) > MAX_MESSAGE_LENGTH:
+            await callback.message.answer(text, parse_mode="HTML")
+            text = "👤 <b>Пользователи с активной подпиской (продолжение):</b>\n\n"
+        
+        text += user_line
     
+    # Отправляем оставшуюся часть текста
     await callback.message.answer(text, parse_mode="HTML")
 
 @router.callback_query(F.data == "user_list_inactive")
@@ -425,8 +455,16 @@ async def handle_user_list_inactive(callback: CallbackQuery):
     text = "👤 <b>Пользователи без подписки:</b>\n\n"
     for user in users:
         username = f"@{user.username}" if user.username else "none"
-        text += f"• {user.full_name} ({username} | <code>{user.telegram_id}</code>)\n"
+        user_line = f"• {user.full_name} ({username} | <code>{user.telegram_id}</code>)\n"
+        
+        # Если текст становится слишком длинным, отправляем текущую часть и начинаем новую
+        if len(text) + len(user_line) > MAX_MESSAGE_LENGTH:
+            await callback.message.answer(text, parse_mode="HTML")
+            text = "👤 <b>Пользователи без подписки (продолжение):</b>\n\n"
+        
+        text += user_line
     
+    # Отправляем оставшуюся часть текста
     await callback.message.answer(text, parse_mode="HTML")
 
 # Обработчики для рассылки сообщений
@@ -474,7 +512,7 @@ async def admin_send_message(message: Message, state: FSMContext, bot: Bot):
             await bot.send_message(user.telegram_id, text)
             success += 1
         except Exception as e:
-            logger.error(f"Ошибка отправки сообщения {user.telegram_id}: {e}")
+            logger.error(f"🛑 Ошибка отправки сообщения {user.telegram_id}: {e}")
             failed += 1
     
     await message.answer(
@@ -591,7 +629,6 @@ async def connect_profile(callback: CallbackQuery):
         await callback.message.answer("⚠️ У вас пока нет созданного профиля.")
         return
     vless_url = generate_vless_url(profile_data)
-    
     text = (
         "🎉 **Ваш VPN профиль готов!**\n\n"
         "ℹ️ **Инструкция по подключению:**\n"
@@ -607,7 +644,8 @@ async def connect_profile(callback: CallbackQuery):
     builder.button(text='🍎 Mac [V2RayU]', url='https://github.com/yanue/V2rayU/releases/download/v4.2.6/V2rayU-64.dmg ')
     builder.button(text='🍏 iOS [V2RayTun]', url='https://apps.apple.com/ru/app/v2raytun/id6476628951')
     builder.button(text='🤖 Android [V2RayNG]', url='https://github.com/2dust/v2rayNG/releases/download/1.10.16/v2rayNG_1.10.16_arm64-v8a.apk')
-    builder.adjust(2, 2, 1)
+    builder.button(text="⬅️ Назад", callback_data="back_to_menu")
+    builder.adjust(2, 2, 1, 1)
 
     await callback.message.edit_text(text, reply_markup=builder.as_markup(), parse_mode='Markdown')
 
@@ -621,7 +659,7 @@ async def user_stats(callback: CallbackQuery):
     profile_data = safe_json_loads(user.vless_profile_data, default={})
     stats = await get_user_stats(profile_data["email"])
 
-    logger.info(stats)
+    logger.debug(stats)
     upload = f"{stats.get('upload', 0) / 1024 / 1024:.2f}"
     upload_size = 'MB' if int(float(upload)) < 1024 else 'GB'
     if upload_size == "GB":
@@ -659,7 +697,7 @@ async def network_stats(callback: CallbackQuery):
         "📊 **Статистика использования сети:**\n\n"
         f"🔼 Upload - `{upload} {upload_size}` | 🔽 Download - `{download} {download_size}`"
     )
-    await callback.message.answer(text, parse_mode='Markdown')
+    await callback.message.edit_text(text, parse_mode='Markdown')
 
 @router.callback_query(F.data == "back_to_menu")
 async def back_to_menu(callback: CallbackQuery, bot: Bot):
