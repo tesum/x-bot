@@ -47,14 +47,14 @@ pip install -r requirements.txt
 3. Configure environment variables:
 
 ```bash
-cp src/.env.example src/.env # use "/" instead of "\" on Linux
+cp src\.env.example src\.env # use "/" instead of "\" on Linux
 # Edit the .env file with your values
 ```
 
 4. Run the bot:
 
 ```bash
-python src/app.py # use python3 and "/" instead of "\" on Linux
+python src\app.py # use python3 and "/" instead of "\" on Linux
 ```
 
 ### Environment Variables Configuration
