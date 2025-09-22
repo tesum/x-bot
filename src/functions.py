@@ -185,7 +185,7 @@ class XUIAPI:
                 "settings": json.dumps(settings, indent=2),
                 "streamSettings": inbound["streamSettings"],
                 "sniffing": inbound["sniffing"],
-                "allocate": inbound["allocate"]
+                # "allocate": inbound["allocate"]
             }
             
             if await self.update_inbound(config.INBOUND_ID, update_data):
@@ -260,7 +260,7 @@ class XUIAPI:
                 "settings": json.dumps(settings, indent=2),
                 "streamSettings": inbound["streamSettings"],
                 "sniffing": inbound["sniffing"],
-                "allocate": inbound["allocate"]
+                # "allocate": inbound["allocate"]
             }
             
             if await self.update_inbound(config.INBOUND_ID, update_data):

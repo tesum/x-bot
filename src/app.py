@@ -26,7 +26,7 @@ async def check_subscriptions(bot: Bot):
             
             for user in users:
                 # Проверка за 1 день до окончания
-                if user.subscription_end - now < timedelta(days=1) and not user.notified:
+                if user.subscription_end - now < timedelta(days=1) and user.subscription_end >= now and not user.notified:
                     try:
                         await bot.send_message(
                             user.telegram_id,
@@ -62,7 +62,30 @@ async def check_subscriptions(bot: Bot):
         except Exception as e:
             logger.warning(f"⚠️ Subscription check error: {e}")
         
-        await asyncio.sleep(3600)  # Проверка каждый час
+        await asyncio.sleep(3600)
+
+async def update_admins_status():
+    """Обновляет статус администраторов в базе данных"""
+    with Session() as session:
+        # Сбрасываем статус администратора у всех пользователей
+        session.query(User).update({User.is_admin: False})
+        
+        # Устанавливаем статус администратора для пользователей из config.ADMINS
+        for admin_id in config.ADMINS:
+            user = session.query(User).filter_by(telegram_id=admin_id).first()
+            if user:
+                user.is_admin = True
+            else:
+                # Если администратора нет в базе, создаем запись
+                new_admin = User(
+                    telegram_id=admin_id,
+                    full_name=f"Admin {admin_id}",
+                    is_admin=True
+                )
+                session.add(new_admin)
+        
+        session.commit()
+    logger.info("✅ Admin status updated in database")
 
 async def main():
     bot = Bot(token=config.BOT_TOKEN)
@@ -71,6 +94,9 @@ async def main():
     try:
         await init_db()
         logger.info("✅ Database initialized")
+
+        # Обновляем статус администраторов
+        await update_admins_status()
     except Exception as e:
         logger.error(f"❌ Database initialization error: {e}")
         return
