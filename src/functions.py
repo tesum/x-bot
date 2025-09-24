@@ -84,6 +84,7 @@ class XUIAPI:
             async with self.session.get(url) as resp:
                 logger.debug(f"⚙️ Response status: {resp.status}")
                 logger.debug(f"⚙️ Response cookies: {resp.cookies}")
+                logger.debug(f'⚙️ Response: {resp}')
                 
                 if resp.status != 200:
                     text = await resp.text()
