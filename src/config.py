@@ -11,7 +11,7 @@ class Config(BaseModel):
     ADMINS: List[int] = Field(default_factory=list)
     XUI_HOST: str = os.getenv("XUI_HOST", "your-server.com")
     XUI_BASE_PATH: str = os.getenv("XUI_BASE_PATH", "/panel")
-    XUI_API_URL: str = f"{XUI_HOST.rstrip('/')}/{XUI_BASE_PATH.lstrip('/')}"
+    XUI_API_URL: str = os.getenv("XUI_API_URL", "admin")
     XUI_USERNAME: str = os.getenv("XUI_USERNAME", "admin")
     XUI_PASSWORD: str = os.getenv("XUI_PASSWORD", "admin")
     XUI_SERVER_NAME: str = os.getenv("XUI_SERVER_NAME", "domain.com")
