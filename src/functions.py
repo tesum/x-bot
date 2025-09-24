@@ -87,7 +87,7 @@ class XUIAPI:
                 
                 if resp.status != 200:
                     text = await resp.text()
-                    logger.error(f"🛑 Get inbound failed: status={resp.status}, response={text[:100]}...")
+                    logger.error(f"🛑 Get inbound failed: status={resp.status}, response={text}...")
                     return None
                 
                 try:
@@ -100,7 +100,7 @@ class XUIAPI:
                         return None
                 except:
                     text = await resp.text()
-                    logger.error(f"🛑 Get inbound response error: {text[:100]}...")
+                    logger.error(f"🛑 Get inbound response error: {text}...")
                     return None
         except Exception as e:
             logger.exception(f"🛑 Get inbound error: {e}")

@@ -30,8 +30,8 @@ class Config(BaseModel):
         try:
             with open("prices.json", 'r', encoding='utf-8') as f:
                 prices = json.load(f)
+                print("✅ Тарифы загружены:")
                 for key, value in prices.items():
-                    print("✅ Тарифы загружены:")
                     print(f"   {key}: {value}")
             # Преобразование ключей в int для удобства
             return {int(k): v for k, v in prices.items()}

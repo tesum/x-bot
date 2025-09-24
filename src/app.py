@@ -13,8 +13,10 @@ from database import Session, UserType, User, init_db, get_all_users, delete_use
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+load_dotenv()
+
 # Настройка логирования
-coloredlogs.install(level='info')
+coloredlogs.install(level=os.getenv("LOG_LEVEL", "info"))
 logger = logging.getLogger(__name__)
 
 async def check_subscriptions(bot: Bot):
