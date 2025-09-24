@@ -24,7 +24,7 @@ class Config(BaseModel):
     REALITY_SPIDER_X: str = os.getenv("REALITY_SPIDER_X", "/")
     PRICES: Dict[int, Dict[str, int]] = Field(default_factory=dict)
 
-    @field_validator('PRICES', mode='before')
+    @field_validator('PRICES', mode='after')
     def load_prices(path):
         # Настройки цен и скидок
         try:
@@ -62,4 +62,5 @@ class Config(BaseModel):
 config = Config(
     ADMINS=os.getenv("ADMINS", ""),
     INBOUND_ID=os.getenv("INBOUND_ID", 15)
+    PRICES={}
 )
