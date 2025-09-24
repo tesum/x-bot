@@ -92,8 +92,8 @@ class XUIAPI:
                 
                 try:
                     data = await resp.json()
+                    logger.debug(f'⚙️ Data: {str(data)}')
                     if data.get("success"):
-                        logger.debug(f'⚙️ Data: {str(data)}')
                         return data.get("obj")
                     else:
                         logger.error(f"🛑 Get inbound failed: {data.get('msg')}")
