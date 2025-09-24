@@ -4,6 +4,7 @@ import asyncio
 import logging
 import warnings
 import coloredlogs
+from dotenv import load_dotenv
 from config import config
 from aiogram import Bot, Dispatcher
 from aiogram.types import PreCheckoutQuery
