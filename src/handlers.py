@@ -14,6 +14,7 @@ from database import (
     get_all_users, create_static_profile, get_static_profiles, 
     User, Session, get_user_stats as db_user_stats
 )
+from database import UserType
 from functions import create_vless_profile, delete_client_by_email, generate_vless_url, get_user_stats, create_static_client, get_global_stats, get_online_users
 
 logger = logging.getLogger(__name__)
