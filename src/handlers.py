@@ -607,7 +607,7 @@ async def connect_profile(callback: CallbackQuery):
         await callback.answer("🛑 Ошибка профиля")
         return
 
-    if user.type == UserType.Expired or (user.subscription_end is not None and user.subscription_end < datetime.utcnow()):
+    if user.type == UserType.EXPIRED or (user.subscription_end is not None and user.subscription_end < datetime.utcnow()):
         await callback.answer("⚠️ Подписка истекла! Продлите подписку.")
         return
     
