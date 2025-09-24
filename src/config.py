@@ -9,11 +9,11 @@ load_dotenv()
 class Config(BaseModel):
     BOT_TOKEN: str = os.getenv("BOT_TOKEN", "")
     ADMINS: List[int] = Field(default_factory=list)
-    XUI_API_URL: str = os.getenv("XUI_API_URL", "http://localhost:54321")
+    XUI_HOST: str = os.getenv("XUI_HOST", "your-server.com")
     XUI_BASE_PATH: str = os.getenv("XUI_BASE_PATH", "/panel")
+    XUI_API_URL: str = f"{XUI_HOST.rstrip('/')}/{XUI_BASE_PATH.lstrip('/')}"
     XUI_USERNAME: str = os.getenv("XUI_USERNAME", "admin")
     XUI_PASSWORD: str = os.getenv("XUI_PASSWORD", "admin")
-    XUI_HOST: str = os.getenv("XUI_HOST", "your-server.com")
     XUI_SERVER_NAME: str = os.getenv("XUI_SERVER_NAME", "domain.com")
     PAYMENT_TOKEN: str = os.getenv("PAYMENT_TOKEN", "")
     INBOUND_ID: int = Field(default=os.getenv("INBOUND_ID", 1))

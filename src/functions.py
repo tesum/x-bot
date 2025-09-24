@@ -30,9 +30,6 @@ class XUIAPI:
             
             # Формируем URL с учетом базового пути
             base_url = config.XUI_API_URL.rstrip('/')
-            # base_path = config.XUI_BASE_PATH.strip('/')
-            # if base_path:
-            #     base_url = f"{base_url}/{base_path}"
             login_url = f"{base_url}/login"
             
             logger.info(f"ℹ️  Trying login to {login_url} with user: {config.XUI_USERNAME}")
@@ -73,9 +70,6 @@ class XUIAPI:
         """Получение данных инбаунда"""
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            base_path = config.XUI_BASE_PATH.strip('/')
-            if base_path:
-                base_url = f"{base_url}/{base_path}"
             url = f"{base_url}/api/inbounds/get/{inbound_id}"
             
             logger.info(f"ℹ️  Getting inbound data from: {url}")
@@ -111,9 +105,6 @@ class XUIAPI:
         """Обновление инбаунда"""
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            base_path = config.XUI_BASE_PATH.strip('/')
-            if base_path:
-                base_url = f"{base_url}/{base_path}"
             url = f"{base_url}/api/inbounds/update/{inbound_id}"
             
             logger.info(f"ℹ️  Updating inbound at: {url}")
@@ -337,9 +328,6 @@ class XUIAPI:
         
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            base_path = config.XUI_BASE_PATH.strip('/')
-            if base_path:
-                base_url = f"{base_url}/{base_path}"
             url = f"{base_url}/api/inbounds/getClientTraffics/{email}"
             
             async with self.session.get(url) as resp:
@@ -369,9 +357,6 @@ class XUIAPI:
         
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            base_path = config.XUI_BASE_PATH.strip('/')
-            if base_path:
-                base_url = f"{base_url}/{base_path}"
             url = f"{base_url}/api/inbounds/get/{inbound_id}"
             
             async with self.session.get(url) as resp:
@@ -400,9 +385,6 @@ class XUIAPI:
         
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            base_path = config.XUI_BASE_PATH.strip('/')
-            if base_path:
-                base_url = f"{base_url}/{base_path}"
             url = f"{base_url}/api/inbounds/onlines"
             
             async with self.session.post(url) as resp:
