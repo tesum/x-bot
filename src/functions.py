@@ -70,7 +70,7 @@ class XUIAPI:
         """Получение данных инбаунда"""
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            url = f"{base_url}/api/inbounds/get/{inbound_id}"
+            url = f"{base_url}/panel/api/inbounds/get/{inbound_id}"
             
             logger.info(f"ℹ️  Getting inbound data from: {url}")
             logger.debug(f"⚙️ Using cookies: {self.cookie_jar}")
@@ -105,7 +105,7 @@ class XUIAPI:
         """Обновление инбаунда"""
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            url = f"{base_url}/api/inbounds/update/{inbound_id}"
+            url = f"{base_url}/panel/api/inbounds/update/{inbound_id}"
             
             logger.info(f"ℹ️  Updating inbound at: {url}")
             
@@ -328,7 +328,7 @@ class XUIAPI:
         
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            url = f"{base_url}/api/inbounds/getClientTraffics/{email}"
+            url = f"{base_url}/panel/api/inbounds/getClientTraffics/{email}"
             
             async with self.session.get(url) as resp:
                 if resp.status != 200:
@@ -357,7 +357,7 @@ class XUIAPI:
         
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            url = f"{base_url}/api/inbounds/get/{inbound_id}"
+            url = f"{base_url}/panel/api/inbounds/get/{inbound_id}"
             
             async with self.session.get(url) as resp:
                 if resp.status != 200:
@@ -385,7 +385,7 @@ class XUIAPI:
         
         try:
             base_url = config.XUI_API_URL.rstrip('/')
-            url = f"{base_url}/api/inbounds/onlines"
+            url = f"{base_url}/panel/api/inbounds/onlines"
             
             async with self.session.post(url) as resp:
                 if resp.status != 200:
