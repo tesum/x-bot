@@ -68,7 +68,7 @@ async def update_subscription(telegram_id: int, months: int):
         if user:
             now = datetime.utcnow()
             # Если подписка активна, добавляем к текущей дате окончания
-            if user.subscription_end > now:
+            if  user.subscription_end not None && user.subscription_end > now:
                 user.subscription_end += timedelta(days=months * 30)
             else:
                 # Если подписка истекла, начинаем с текущей даты

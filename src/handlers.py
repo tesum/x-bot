@@ -57,8 +57,12 @@ async def show_menu(bot: Bot, chat_id: int, message_id: int = None):
     if not user:
         return
     
-    status = "Активна" if user.subscription_end > datetime.utcnow() else "Истекла"
-    expire_date = user.subscription_end.strftime("%d-%m-%Y %H:%M") if status == "Активна" else status
+    if user.subscription_end is None:
+        status = "Неактивна"
+        expire_date = "Нет"
+    else:
+        status = "Активна" if user.subscription_end > datetime.utcnow() else "Истекла"
+        expire_date = user.subscription_end.strftime("%d-%m-%Y %H:%M") if status == "Активна" else status
     
     text = (
         f"**Имя профиля**: `{user.full_name}`\n"

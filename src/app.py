@@ -25,6 +25,9 @@ async def check_subscriptions(bot: Bot):
             users = await get_all_users()
             
             for user in users:
+                if user.subscription_end is None:
+                    continue
+                
                 # Проверка за 1 день до окончания
                 if user.subscription_end - now < timedelta(days=1) and user.subscription_end >= now and not user.notified:
                     try:
