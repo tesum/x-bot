@@ -1,7 +1,7 @@
 .PHONY: run test install lint format clean
 
 run:
-	python src/app.py
+	python3 src/app.py
 
 install:
 	python3 -m venv .venv
