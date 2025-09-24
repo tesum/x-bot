@@ -73,7 +73,8 @@ async def show_menu(bot: Bot, chat_id: int, message_id: int = None):
     
     builder = InlineKeyboardBuilder()
     builder.button(text="💵 Продлить" if status=="Активна" else "💵 Оплатить", callback_data="renew_sub")
-    builder.button(text="✅ Подключить", callback_data="connect")
+    if status != "Неактивна":
+        builder.button(text="✅ Подключить", callback_data="connect")
     builder.button(text="📊 Статистика", callback_data="stats")
     builder.button(text="ℹ️ Помощь", callback_data="help")
     
@@ -164,12 +165,9 @@ async def help_msg(callback: CallbackQuery):
     await callback.answer()
     builder = InlineKeyboardBuilder()
     builder.button(text="⬅️ Назад", callback_data="back_to_menu")
+    # TODO: Добавить раздел помощи
     text = (
-        f"О боте:\n"
-        "<b>Разработчики:</b>\n"
-        "@QueenDekim | @cpn_moris\n"
-        "<i>Отдельное спасибо</i> @ascento <i>за помощь в разработке</i>\n"
-        "<a href='https://t.me/+OJsul9nc9hYzZjEy'>Официальный чат проекта</a>"
+        f"Появится позже\n"
     )
     await callback.message.answer(text, parse_mode='HTML', reply_markup=builder.as_markup())
 
@@ -608,8 +606,8 @@ async def connect_profile(callback: CallbackQuery):
     if not user:
         await callback.answer("🛑 Ошибка профиля")
         return
-    
-    if user.subscription_end < datetime.utcnow():
+
+    if user.subscription_end is not None and user.subscription_end < datetime.utcnow():
         await callback.answer("⚠️ Подписка истекла! Продлите подписку.")
         return
     

@@ -1,3 +1,4 @@
+import json
 import os
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
@@ -23,12 +24,13 @@ class Config(BaseModel):
     REALITY_SPIDER_X: str = os.getenv("REALITY_SPIDER_X", "/")
 
     # Настройки цен и скидок
-    PRICES: Dict[int, Dict[str, int]] = {
-        1: {"base_price": 250, "discount_percent": 0},
-        3: {"base_price": 750, "discount_percent": 10},
-        6: {"base_price": 1500, "discount_percent": 20},
-        12: {"base_price": 3000, "discount_percent": 30}
-    }
+    try:
+        with open("prices.json", 'r', encoding='utf-8') as f:
+            prices = json.load(f)
+        # Преобразование ключей в int для удобства
+        PRICES =  {int(k): v for k, v in prices.items()}
+    except Exception as e:
+        print(f"Ошибка загрузки тарифов: {e}")
 
     @field_validator('ADMINS', mode='before')
     def parse_admins(cls, value):
