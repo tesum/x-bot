@@ -22,7 +22,7 @@ class Config(BaseModel):
     REALITY_SNI: str = os.getenv("REALITY_SNI", "example.com")
     REALITY_SHORT_ID: str = os.getenv("REALITY_SHORT_ID", "1234567890")
     REALITY_SPIDER_X: str = os.getenv("REALITY_SPIDER_X", "/")
-    PRICES: Dict[int, Dict[str, int]] = [:]
+    PRICES: Dict[int, Dict[str, int]] = Field(default_factory=dict)
 
     @field_validator('PRICES', mode='before')
     def load_prices(path):
