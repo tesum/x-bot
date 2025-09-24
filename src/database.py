@@ -1,15 +1,23 @@
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, func
+from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime, timedelta
+from enum import Enum
 import logging
 
 logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
+class UserType(str, Enum):
+    NEW = "new"
+    ACTIVE = "active"
+    EXPIRED = "expired"
+
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
+    type = Column(SAEnum(UserType), default=UserType.NEW)
     telegram_id = Column(Integer, unique=True)
     full_name = Column(String)
     username = Column(String)
@@ -58,8 +66,9 @@ async def delete_user_profile(telegram_id: int):
         if user:
             user.vless_profile_data = None
             user.notified = False
+            user.type = UserType.EXPIRED
             session.commit()
-            logger.info(f"✅ User profile deleted: {telegram_id}")
+            logger.info(f"✅ User vless-profile deleted: {telegram_id}")
 
 async def update_subscription(telegram_id: int, months: int):
     """Обновляет подписку с учетом текущего состояния"""
@@ -68,11 +77,12 @@ async def update_subscription(telegram_id: int, months: int):
         if user:
             now = datetime.utcnow()
             # Если подписка активна, добавляем к текущей дате окончания
-            if  user.subscription_end is not None and user.subscription_end > now:
+            if  user.type == UserType.ACTIVE and user.subscription_end > now:
                 user.subscription_end += timedelta(days=months * 30)
             else:
                 # Если подписка истекла, начинаем с текущей даты
                 user.subscription_end = now + timedelta(days=months * 30)
+                user.type = UserType.ACTIVE
             
             # Сбрасываем флаг уведомления
             user.notified = False

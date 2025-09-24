@@ -249,8 +249,7 @@ async def process_successful_payment(message: Message, bot: Bot):
                 return
             
             # Определяем тип действия (покупка или продление)
-            now = datetime.utcnow()
-            action_type = "продлена" if user.subscription_end > now else "куплена"
+            action_type = "куплена" if user.type == UserType.NEW else "продлена"
             
             # Обновляем подписку
             success = await update_subscription(message.from_user.id, months)
@@ -607,7 +606,7 @@ async def connect_profile(callback: CallbackQuery):
         await callback.answer("🛑 Ошибка профиля")
         return
 
-    if user.subscription_end is not None and user.subscription_end < datetime.utcnow():
+    if user.type == UserType.Expired or (user.subscription_end is not None and user.subscription_end < datetime.utcnow()):
         await callback.answer("⚠️ Подписка истекла! Продлите подписку.")
         return
     

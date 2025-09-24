@@ -25,7 +25,7 @@ async def check_subscriptions(bot: Bot):
             users = await get_all_users()
             
             for user in users:
-                if user.subscription_end is None:
+                if user.type != UserType.ACTIVE:
                     continue
                 
                 # Проверка за 1 день до окончания
@@ -45,7 +45,7 @@ async def check_subscriptions(bot: Bot):
                         logger.warning(f"⚠️ Notification error: {e}")
                 
                 # Проверка истечения подписки
-                if user.subscription_end <= now and user.vless_profile_data:
+                if  user.subscription_end <= now and user.vless_profile_data:
                     try:
                         profile = json.loads(user.vless_profile_data)
                         # Удаляем из инбаунда
