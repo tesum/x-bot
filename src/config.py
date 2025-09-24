@@ -22,15 +22,18 @@ class Config(BaseModel):
     REALITY_SNI: str = os.getenv("REALITY_SNI", "example.com")
     REALITY_SHORT_ID: str = os.getenv("REALITY_SHORT_ID", "1234567890")
     REALITY_SPIDER_X: str = os.getenv("REALITY_SPIDER_X", "/")
+    PRICES: Dict[int, Dict[str, int]] = [:]
 
-    # Настройки цен и скидок
-    try:
-        with open("prices.json", 'r', encoding='utf-8') as f:
-            prices = json.load(f)
-        # Преобразование ключей в int для удобства
-        PRICES =  {int(k): v for k, v in prices.items()}
-    except Exception as e:
-        print(f"Ошибка загрузки тарифов: {e}")
+    @field_validator('PRICES', mode='before')
+    def load_prices(path):
+        # Настройки цен и скидок
+        try:
+            with open("prices.json", 'r', encoding='utf-8') as f:
+                prices = json.load(f)
+            # Преобразование ключей в int для удобства
+            return {int(k): v for k, v in prices.items()}
+        except Exception as e:
+            print(f"Ошибка загрузки тарифов: {e}")
 
     @field_validator('ADMINS', mode='before')
     def parse_admins(cls, value):
