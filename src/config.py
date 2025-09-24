@@ -30,6 +30,7 @@ class Config(BaseModel):
         try:
             with open("prices.json", 'r', encoding='utf-8') as f:
                 prices = json.load(f)
+                print(f"✅ Тарифы загружены: {prices}")
             # Преобразование ключей в int для удобства
             return {int(k): v for k, v in prices.items()}
         except Exception as e:
@@ -61,6 +62,6 @@ class Config(BaseModel):
 
 config = Config(
     ADMINS=os.getenv("ADMINS", ""),
-    INBOUND_ID=os.getenv("INBOUND_ID", 15)
+    INBOUND_ID=os.getenv("INBOUND_ID", 15),
     PRICES={}
 )
