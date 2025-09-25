@@ -34,6 +34,9 @@ class User(Base):
 async def get_user(telegram_id: int):
     with Session() as session:
         return session.query(User).filter_by(telegram_id=telegram_id).first()
+    
+async def get_user_in_session(session: Session, telegram_id: int):
+    return session.query(User).filter_by(telegram_id=telegram_id).first()
 
 async def create_user(telegram_id: int, full_name: str, username: str = None, is_admin: bool = False):
     with Session() as session:
@@ -82,7 +85,7 @@ async def update_subscription(telegram_id: int, months: int):
 
 async def user_apply_promocode(telegram_id: int, code: str):
     with Session() as session:
-        user = await get_user(telegram_id)
+        user = await get_user_in_session(session, telegram_id)
         if user:
             discount = await apply_promocode(session, code)
             if discount > 0:
