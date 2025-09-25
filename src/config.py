@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Dict
 
+MAX_MESSAGE_LENGTH = 4096
+
 load_dotenv()
 
 class Config(BaseModel):
@@ -49,18 +51,6 @@ class Config(BaseModel):
         if isinstance(value, str):
             return int(value)
         return value or 15
-    
-    def calculate_price(self, months: int) -> int:
-        """Вычисляет итоговую стоимость с учетом скидки"""
-        if months not in self.PRICES:
-            return 0
-        
-        price_info = self.PRICES[months]
-        base_price = price_info["base_price"]
-        discount_percent = price_info["discount_percent"]
-        
-        discount_amount = (base_price * discount_percent) // 100
-        return base_price - discount_amount
 
 config = Config(
     ADMINS=os.getenv("ADMINS", ""),

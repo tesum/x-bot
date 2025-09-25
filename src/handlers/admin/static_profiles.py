@@ -1,5 +1,23 @@
-from aiogram import Router
+import asyncio
+import json
+import logging
+import xui.public
+import database.staticProfiles
+from .states import AdminStates
+from datetime import datetime
+from aiogram import Bot, Router
+from datetime import datetime, timedelta
+from aiogram import Router, F, Bot
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from config import config
+from database.database import Session
+from database.user import User, UserType, create_user, get_user
 
+logger = logging.getLogger(__name__)
 router = Router()
 
 # Остальные обработчики остаются без изменений
@@ -21,12 +39,12 @@ async def static_profile_add(callback: CallbackQuery, state: FSMContext):
 @router.message(AdminStates.CREATE_STATIC_PROFILE)
 async def process_static_profile_name(message: Message, state: FSMContext):
     profile_name = message.text
-    profile_data = await create_static_client(profile_name)
+    profile_data = await xui.public.create_static_client(profile_name)
     
     if profile_data:
-        vless_url = generate_vless_url(profile_data)
-        await create_static_profile(profile_name, vless_url)
-        profiles = await get_static_profiles()
+        vless_url = xui.public.generate_vless_url(profile_data)
+        await database.staticProfiles.create_static_profile(profile_name, vless_url)
+        profiles = await database.staticProfiles.get_static_profiles()
         for profile in profiles:
             if profile.name == profile_name:
                 id = profile.id
@@ -40,7 +58,7 @@ async def process_static_profile_name(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == "static_profile_list")
 async def static_profile_list(callback: CallbackQuery):
-    profiles = await get_static_profiles()
+    profiles = await database.staticProfiles.get_static_profiles()
     if not profiles:
         await callback.answer("Нет статических профилей")
         return
@@ -59,12 +77,12 @@ async def handle_delete_static_profile(callback: CallbackQuery):
         profile_id = int(callback.data.split("_")[-1])
         
         with Session() as session:
-            profile = session.query(StaticProfile).filter_by(id=profile_id).first()
+            profile = session.query(database.staticProfiles.StaticProfile).filter_by(id=profile_id).first()
             if not profile:
                 await callback.answer("⚠️ Профиль не найден")
                 return
             
-            success = await delete_client_by_email(profile.name)
+            success = await xui.public.delete_client_by_email(profile.name)
             if not success:
                 logger.error(f"🛑 Ошибка удаления клиента из инбаунда: {profile.name}")
             

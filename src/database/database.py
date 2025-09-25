@@ -6,11 +6,7 @@ from enum import Enum
 import logging
 
 logger = logging.getLogger(__name__)
-
 Base = declarative_base()
-
-
-
 engine = create_engine('sqlite:///users.db', echo=False)
 Session = sessionmaker(bind=engine)
 

@@ -1,3 +1,7 @@
+
+from xui.internal import XUIAPI
+from config import config
+
 async def create_vless_profile(telegram_id: int):
     api = XUIAPI()
     try:

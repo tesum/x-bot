@@ -1,8 +1,10 @@
+import logging
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, func
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime, timedelta
+from database.database import Base, Session
 
-Base = declarative_base()
+logger = logging.getLogger(__name__)
 
 class StaticProfile(Base):
     __tablename__ = 'static_profiles'

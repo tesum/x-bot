@@ -1,5 +1,21 @@
-from aiogram import Router
+import asyncio
+import json
+import logging
+import xui.public
+from datetime import datetime
+from aiogram import Bot, Router
+from datetime import datetime, timedelta
+from aiogram import Router, F, Bot
+from aiogram.types import Message, CallbackQuery, LabeledPrice, PreCheckoutQuery
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from config import config
+from database.database import Session
+from database.user import User, UserType, calculate_price, create_user, get_user, update_subscription
 
+logger = logging.getLogger(__name__)
 router = Router()
 
 @router.callback_query(F.data.startswith("pay_"))
@@ -12,7 +28,7 @@ async def process_payment(callback: CallbackQuery, bot: Bot):
             await callback.message.answer("❌ Неверный период подписки")
             return
             
-        final_price = config.calculate_price(months)
+        final_price = await calculate_price(callback.from_user.id, months)
         suffix = "месяц" if months == 1 else "месяца" if months in (2,3,4) else "месяцев"
         # Создаем инвойс для оплаты
         prices = [LabeledPrice(label=f"VPN подписка на {months} мес.", amount=final_price * 100)]
@@ -46,7 +62,7 @@ async def process_successful_payment(message: Message, bot: Bot):
         payload = message.successful_payment.invoice_payload
         if payload.startswith("subscription_"):
             months = int(payload.split("_")[1])
-            final_price = config.calculate_price(months)  # Переводим обратно в рубли
+            final_price = await calculate_price(message.from_user.id, months)
             
             # Получаем информацию о пользователе
             user = await get_user(message.from_user.id)
@@ -91,7 +107,7 @@ async def renew_subscription(callback: CallbackQuery):
     # Добавляем кнопки для каждого варианта подписки
     for months in sorted(config.PRICES.keys()):
         price_info = config.PRICES[months]
-        final_price = config.calculate_price(months)
+        final_price = await calculate_price(callback.from_user.id, months)
         
         discount_text = ""
         if price_info["discount_percent"] > 0:

@@ -1,9 +1,31 @@
-from aiogram import Router
+import asyncio
+import json
+import logging
+import xui.public
+from datetime import datetime
+from aiogram import Bot, Dispatcher, Router
+from datetime import datetime, timedelta
+from aiogram import Router, F, Bot
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from config import MAX_MESSAGE_LENGTH, config
+from database.database import Session
+from database.user import User, UserType, create_user, get_user
+from .admin.base import routers as routers_admin
+from .user.routers import routers as routers_user
 
+logger = logging.getLogger(__name__)
 router = Router()
 
-MAX_MESSAGE_LENGTH = 4096
-
+def setup_handlers(dp: Dispatcher):
+    dp.include_router(router)
+    for r in routers_admin + routers_user:
+        dp.include_router(r)
+    logger.info("✅ Handlers setup completed")
+    
 def split_text(text: str, max_length: int = MAX_MESSAGE_LENGTH) -> list:
     """Разбивает текст на части указанной максимальной длины"""
     if len(text) <= max_length:
@@ -36,8 +58,9 @@ async def show_menu(bot: Bot, chat_id: int, message_id: int = None):
         expire_date = user.subscription_end.strftime("%d-%m-%Y %H:%M") if status == "Активна" else status
     
     text = (
-        f"**Имя профиля**: `{user.full_name}`\n"
-        f"**Id**: `{user.telegram_id}`\n"
+        f"**Профиль**: `{user.username}`\n"
+        f"**id**: `{user.telegram_id}`\n"
+        f"**Персональная скидка**: `{user.discount_percent}%`\n"
         f"**Подписка**: `{status}`\n"
         f"**Дата окончания подписки**: `{expire_date}`"
     )
@@ -47,6 +70,7 @@ async def show_menu(bot: Bot, chat_id: int, message_id: int = None):
     if status != "Неактивна":
         builder.button(text="✅ Подключить", callback_data="connect")
     builder.button(text="📊 Статистика", callback_data="stats")
+    builder.button(text="🎁 Промокод", callback_data="user:activate_promocode")
     builder.button(text="ℹ️ Помощь", callback_data="help")
     
     if user.is_admin:
@@ -157,7 +181,7 @@ async def connect_profile(callback: CallbackQuery):
     
     if not user.vless_profile_data:
         await callback.message.edit_text("⚙️ Создаем ваш VPN профиль...")
-        profile_data = await create_vless_profile(user.telegram_id)
+        profile_data = await xui.public.create_vless_profile(user.telegram_id)
         
         if profile_data:
             with Session() as session:
@@ -174,7 +198,7 @@ async def connect_profile(callback: CallbackQuery):
     if not profile_data:
         await callback.message.answer("⚠️ У вас пока нет созданного профиля.")
         return
-    vless_url = generate_vless_url(profile_data)
+    vless_url = xui.public.generate_vless_url(profile_data)
     text = (
         "🎉 **Ваш VPN профиль готов!**\n\n"
         "ℹ️ **Инструкция по подключению:**\n"
@@ -208,7 +232,7 @@ async def user_stats(callback: CallbackQuery):
         return
     await callback.message.edit_text("⚙️ Загружаем вашу статистику...")
     profile_data = safe_json_loads(user.vless_profile_data, default={})
-    stats = await get_user_stats(profile_data["email"])
+    stats = await xui.public.get_user_stats(profile_data["email"])
 
     logger.debug(stats)
     upload = f"{stats.get('upload', 0) / 1024 / 1024:.2f}"
@@ -230,9 +254,9 @@ async def user_stats(callback: CallbackQuery):
     await callback.message.answer(text, parse_mode='Markdown')
 
 def safe_json_loads(data, default=None):
-if not data:
-    return default
-try:
-    return json.loads(data)
-except Exception:
-    return default
+    if not data:
+        return default
+    try:
+        return json.loads(data)
+    except Exception:
+        return default

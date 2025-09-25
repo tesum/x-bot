@@ -1,13 +1,14 @@
+import logging
 from sqlalchemy import create_engine, Column, ARRAY, Integer, String, DateTime, Boolean, func
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime, timedelta
 from enum import Enum
-import logging
+from config import config
+from .database import Base, Session
+from database.promocodes import apply_promocode
 
 logger = logging.getLogger(__name__)
-
-Base = declarative_base()
 
 class UserType(str, Enum):
     NEW = "new"
@@ -27,8 +28,7 @@ class User(Base):
     vless_profile_data = Column(String)
     is_admin = Column(Boolean, default=False)
     notified = Column(Boolean, default=False)
-    applied_promocodes = Column(ARRAY(String), default=list)
-    discount_percent = Column(Int, nullable=True)
+    discount_percent = Column(Integer, default=0)
     
 
 async def get_user(telegram_id: int):
@@ -80,18 +80,19 @@ async def update_subscription(telegram_id: int, months: int):
             return True
         return False
 
-async def user_apply_promocode(session: Session, telegram_id: int, code: str) {
-    user = get_user(telegram_id)
-    if user and code not in user.applied_promocodes:
-        discount = apply_promocode(session, code)
-        if discount > 0:
-            user.discount_percent = discount
-            user.applied_promocodes.append(code)
-            logger.info(f"✅ Promocode applied for {telegram_id}: discount -{discount}%")
-        session.commit()
-        return discount
-    return 0
-}
+async def user_apply_promocode(telegram_id: int, code: str):
+    with Session() as session:
+        user = await get_user(telegram_id)
+        if user:
+            discount = await apply_promocode(session, code)
+            if discount > 0:
+                user.discount_percent = discount
+                session.commit()
+                logger.info(f"✅ Promocode applied for {telegram_id}: discount -{discount}%")
+            else:
+                logger.info(f"✅ User {telegram_id} tried use promocode {code} and get discount {discount}%")
+            return discount
+        return 0
 
 async def get_all_users(with_subscription: bool = None):
     with Session() as session:
@@ -109,3 +110,19 @@ async def get_user_stats():
         with_sub = session.query(func.count(User.id)).filter(User.subscription_end > datetime.utcnow()).scalar()
         without_sub = total - with_sub
         return total, with_sub, without_sub
+    
+async def calculate_price(telegram_id: int, months: int) -> int:
+    """Вычисляет итоговую стоимость с учетом скидки"""
+    user = await get_user(telegram_id)
+
+    if months not in config.PRICES:
+        return 0
+    
+    price_info = config.PRICES[months]
+    base_price = price_info["base_price"]
+    discount_percent = price_info["discount_percent"]
+    personal_discount = user.discount_percent
+    total_discount = 1 - (discount_percent + personal_discount) / 100
+    final_price = round(base_price * max(total_discount, 0))
+    logger.debug(f"Calculate price with personal_discount: {personal_discount}% total sum: {total_discount}, base_price: {base_price}, final price: {final_price}")
+    return final_price

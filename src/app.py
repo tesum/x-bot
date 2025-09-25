@@ -8,10 +8,11 @@ from dotenv import load_dotenv
 from config import config
 from aiogram import Bot, Dispatcher
 from aiogram.types import PreCheckoutQuery
-from handlers import setup_handlers
+from database.database import Session, init_db
+from database.user import User, UserType, delete_user_profile, get_all_users
+from handlers.base import setup_handlers
 from datetime import datetime, timedelta
-from functions import delete_client_by_email
-from database import Session, UserType, User, init_db, get_all_users, delete_user_profile
+from xui.public import delete_client_by_email
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 

@@ -1,7 +1,34 @@
-from aiogram import Router
+import asyncio
+import json
+import logging
+import xui.public
+from datetime import datetime
+from aiogram import Bot, Router
+from datetime import datetime, timedelta
+from aiogram import Router, F, Bot
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from config import MAX_MESSAGE_LENGTH, config
+from database.database import Session
+from database.user import User, UserType, create_user, get_all_users, get_user
 
+logger = logging.getLogger(__name__)
 router = Router()
 
+# Обработчики для вывода списка пользователей
+@router.callback_query(F.data == "admin_user_list")
+async def admin_user_list(callback: CallbackQuery):
+    builder = InlineKeyboardBuilder()
+    builder.button(text="✅ С подпиской", callback_data="user_list_active")
+    builder.button(text="🛑 Без подписки", callback_data="user_list_inactive")
+    builder.button(text="⏱️ Статические профили", callback_data="static_profiles_menu")
+    builder.button(text="⬅️ Назад", callback_data="admin_menu")
+    builder.adjust(1, 1, 1)
+    await callback.message.edit_text("**Выберите фильтр**", reply_markup=builder.as_markup(), parse_mode='Markdown')
+    
 @router.callback_query(F.data == "user_list_active")
 async def handle_user_list_active(callback: CallbackQuery):
     users = await get_all_users(with_subscription=True)

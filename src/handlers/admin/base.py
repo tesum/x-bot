@@ -1,18 +1,24 @@
-from aiogram import Router
+import asyncio
+import json
+import logging
+import xui.public
+from datetime import datetime, timedelta
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from database.database import Session
+from database.user import User, get_user, get_user_stats as db_user_stats
+from .states import AdminStates
+from .newsletters import router as router_newsletters
+from .static_profiles import router as router_staticProfiles
+from .user_list import router as router_userList
+from .promocode import router as router_promocode
 
+logger = logging.getLogger(__name__)
 router = Router()
-
-class AdminStates(StatesGroup):
-    ADD_TIME = State()
-    REMOVE_TIME = State()
-    CREATE_STATIC_PROFILE = State()
-    SEND_MESSAGE = State()
-    ADD_TIME_USER = State()
-    REMOVE_TIME_USER = State()
-    ADD_TIME_AMOUNT = State()
-    REMOVE_TIME_AMOUNT = State()
-    SEND_MESSAGE_TARGET = State()
-    CREATE_PROMOCODE = State()
+routers = [router, router_newsletters, router_staticProfiles, router_userList, router_promocode]
 
 @router.callback_query(F.data == "admin_menu")
 async def admin_menu(callback: CallbackQuery):
@@ -22,7 +28,7 @@ async def admin_menu(callback: CallbackQuery):
         return
     
     total, with_sub, without_sub = await db_user_stats()
-    online_count = await get_online_users()
+    online_count = await xui.public.get_online_users()
     
     text = (
         "**Административное меню**\n\n"
@@ -37,6 +43,7 @@ async def admin_menu(callback: CallbackQuery):
     builder.button(text="📋 Список пользователей", callback_data="admin_user_list")
     builder.button(text="📊 Статистика исп. сети", callback_data="admin_network_stats")
     builder.button(text="📢 Рассылка", callback_data="admin_send_message")
+    builder.button(text="🎁 Промокод", callback_data="admin:generate_promocode")
     builder.button(text="⬅️ Назад", callback_data="back_to_menu")
     builder.adjust(2, 1, 1, 1, 1)
     
@@ -146,20 +153,9 @@ async def admin_remove_time_amount(message: Message, state: FSMContext):
     finally:
         await state.clear()
 
-# Обработчики для вывода списка пользователей
-@router.callback_query(F.data == "admin_user_list")
-async def admin_user_list(callback: CallbackQuery):
-    builder = InlineKeyboardBuilder()
-    builder.button(text="✅ С подпиской", callback_data="user_list_active")
-    builder.button(text="🛑 Без подписки", callback_data="user_list_inactive")
-    builder.button(text="⏱️ Статические профили", callback_data="static_profiles_menu")
-    builder.button(text="⬅️ Назад", callback_data="admin_menu")
-    builder.adjust(1, 1, 1)
-    await callback.message.edit_text("**Выберите фильтр**", reply_markup=builder.as_markup(), parse_mode='Markdown')
-
 @router.callback_query(F.data == "admin_network_stats")
 async def network_stats(callback: CallbackQuery):
-    stats = await get_global_stats()
+    stats = await xui.public.get_global_stats()
 
     upload = f"{stats.get('upload', 0) / 1024 / 1024:.2f}"
     upload_size = 'MB' if int(float(upload)) < 1024 else 'GB'
@@ -177,24 +173,3 @@ async def network_stats(callback: CallbackQuery):
         f"🔼 Upload - `{upload} {upload_size}` | 🔽 Download - `{download} {download_size}`"
     )
     await callback.message.edit_text(text, parse_mode='Markdown')
-
-# Аналогично для создания, только обычно создание промокода — функция админа и триггерится по inline-кнопке или отдельной форме/команде
-@router.callback_query(F.data.startswith("create_promocode:"))
-async def create_promocode_callback(callback: CallbackQuery):
-    parts = callback.data.split(":")
-    if len(parts) < 3:
-        await callback.message.answer("Ошибка данных для создания промокода.")
-        await callback.answer()
-        return
-    code = parts[1]
-    discount = int(parts[2])
-    uses = int(parts[3]) if len(parts) > 3 else 1
-
-    with Session() as session:
-        try:
-            create_promocode(session, code, discount, uses)
-            await callback.message.answer(f"Промокод {code} успешно создан ✅")
-        except ValueError as e:
-            await callback.message.answer(str(e))
-
-    await callback.answer()
