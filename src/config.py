@@ -26,6 +26,7 @@ class Config(BaseModel):
     REALITY_SPIDER_X: str = os.getenv("REALITY_SPIDER_X", "/")
     PRICES: Dict[int, Dict[str, int]] = Field(default_factory=dict)
     PROMODAY: int = 1
+    IS_STOP_MARKET: bool = False
 
     @field_validator('PRICES', mode='after')
     def load_prices(path):

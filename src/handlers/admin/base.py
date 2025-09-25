@@ -1,5 +1,3 @@
-import asyncio
-import json
 import logging
 import xui.public
 from datetime import datetime, timedelta
@@ -10,15 +8,17 @@ from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from database.database import Session
 from database.user import User, get_user, get_user_stats as db_user_stats
+from config import config
 from .states import AdminStates
 from .newsletters import router as router_newsletters
 from .static_profiles import router as router_staticProfiles
 from .user_list import router as router_userList
 from .promocode import router as router_promocode
+from .enable_market import router as router_enable_market
 
 logger = logging.getLogger(__name__)
 router = Router()
-routers = [router, router_newsletters, router_staticProfiles, router_userList, router_promocode]
+routers = [router, router_newsletters, router_staticProfiles, router_userList, router_promocode, router_enable_market]
 
 @router.callback_query(F.data == "admin_menu")
 async def admin_menu(callback: CallbackQuery):
@@ -44,6 +44,7 @@ async def admin_menu(callback: CallbackQuery):
     builder.button(text="📊 Статистика исп. сети", callback_data="admin_network_stats")
     builder.button(text="📢 Рассылка", callback_data="admin_send_message")
     builder.button(text="🎁 Промокод", callback_data="admin:generate_promocode")
+    builder.button(text="Включить продажи" if config.IS_STOP_MARKET else "Выключить продажи", callback_data="admin:enable_market")
     builder.button(text="⬅️ Назад", callback_data="back_to_menu")
     builder.adjust(2, 1, 1, 1, 1)
     

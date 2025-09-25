@@ -102,6 +102,10 @@ async def process_successful_payment(message: Message, bot: Bot):
 
 @router.callback_query(F.data == "renew_sub")
 async def renew_subscription(callback: CallbackQuery):
+    if config.IS_STOP_MARKET:
+        await callback.answer("Продажи временно отключены")
+        return
+
     builder = InlineKeyboardBuilder()
     
     # Добавляем кнопки для каждого варианта подписки
