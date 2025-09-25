@@ -35,6 +35,10 @@ async def get_user(telegram_id: int):
     with Session() as session:
         return session.query(User).filter_by(telegram_id=telegram_id).first()
     
+async def get_user_by_username(username: str):
+    with Session() as session:
+        return session.query(User).filter_by(username=username).first()
+    
 async def get_user_in_session(session: Session, telegram_id: int):
     return session.query(User).filter_by(telegram_id=telegram_id).first()
 
@@ -44,7 +48,7 @@ async def create_user(telegram_id: int, full_name: str, username: str = None, is
             telegram_id=telegram_id,
             full_name=full_name,
             username=username,
-            subscription_end=datetime.utcnow() + timedelta(days=3),
+            subscription_end=datetime.utcnow() + timedelta(days=config.PROMODAY),
             is_admin=is_admin
         )
         session.add(user)

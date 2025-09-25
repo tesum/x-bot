@@ -1,13 +1,14 @@
 import asyncio
 import json
 import logging
+from handlers.user.states import UserStates
 import xui.public
 from datetime import datetime
 from aiogram import Bot, Dispatcher, Router
 from datetime import datetime, timedelta
 from aiogram import Router, F, Bot
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
@@ -116,7 +117,7 @@ async def start_cmd(message: Message, bot: Bot):
             username=message.from_user.username,
             is_admin=is_admin
         )
-        await message.answer(f"Добро пожаловать в VPN бота `{(await bot.get_me()).full_name}`!\nВам предоставлен **бесплатный** тестовый период на **3 дня**!", parse_mode='Markdown')
+        await message.answer(f"Добро пожаловать в VPN бота `{(await bot.get_me()).full_name}`!\nВам предоставлен **бесплатный** тестовый период на **1 день**!", parse_mode='Markdown')
         await asyncio.sleep(2)
     
     # Обновляем данные если есть изменения
@@ -156,17 +157,22 @@ async def menu_cmd(message: Message, bot: Bot):
     await show_menu(bot, message.from_user.id)
 
 @router.callback_query(F.data == "help")
-async def help_msg(callback: CallbackQuery):
+async def help_msg(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
-    builder = InlineKeyboardBuilder()
-    builder.button(text="⬅️ Назад", callback_data="back_to_menu")
-    # TODO: Добавить раздел помощи
-    text = (
-        f"Появится позже\n"
+    await callback.message.answer("Опишите свою проблему:")
+    await state.set_state(UserStates.waiting_help_text)
+
+@router.message(StateFilter(UserStates.waiting_help_text))
+async def handle_user_help_message_text(msg: Message, state: FSMContext, bot: Bot):
+    message_for_admins = (
+        f"Пользователь (@{msg.from_user.username}) запросил помощь\n"
+        f">{msg.text}"
     )
-    await callback.message.answer(text, parse_mode='HTML', reply_markup=builder.as_markup())
-
-
+    for admin_id in config.ADMINS:
+        try:
+            await bot.send_message(admin_id, message_for_admins)
+        except Exception as e:
+            logger.error(f"🛑 Failed to send notification to admin {admin_id}: {e}")
 
 @router.callback_query(F.data == "connect")
 async def connect_profile(callback: CallbackQuery):
